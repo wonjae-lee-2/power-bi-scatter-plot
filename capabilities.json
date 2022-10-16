@@ -1,0 +1,39 @@
+{
+    "privileges": [],
+    "dataRoles": [
+        {
+            "name": "category",
+            "displayName": "Category",
+            "kind": "Grouping"
+        },
+        {
+            "name": "measure",
+            "displayName": "Measure",
+            "kind": "Measure"
+        }
+    ],
+    "dataViewMappings": [
+        {
+            "conditions": [
+                {
+                    "category": {
+                        "max": 1
+                    }
+                }
+            ],
+            "categorical": {
+                "categories": {
+                    "bind": {
+                        "to": "category"
+                    }
+                },
+                "values": {
+                    "for": {
+                        "in": "measure"
+                    }
+                }
+            }
+        }
+    ],
+    "objects": {}
+}

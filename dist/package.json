@@ -1,0 +1,17 @@
+{
+    "version": "1.0.0",
+    "author": {"name":"Wonjae Lee","email":"wonjae.lee.2@gmail.com"},
+    "resources": [
+        {
+            "resourceId": "rId0",
+            "sourceType": 5,
+            "file": "resources/scatter6AE9AAA6125B4C8AB359C01EAE00F9A4.pbiviz.json"
+        }
+    ],
+    "visual": {"name":"scatter","displayName":"scatter","guid":"scatter6AE9AAA6125B4C8AB359C01EAE00F9A4","visualClassName":"Visual","version":"1.0.0","description":"Scatter plot with two drop-down lists","supportUrl":"https://community.powerbi.com","gitHubUrl":""},
+    "metadata": {
+        "pbivizjson": {
+            "resourceId": "rId0"
+        }
+    }  
+}
