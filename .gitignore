@@ -105,3 +105,6 @@ typings/
 
 # Power BI temporary folder
 .tmp/
+
+# Webpack stats files
+webpack.*

@@ -35,7 +35,7 @@ import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import * as d3 from "d3";
 type Selection<T1, T2 = T1> = d3.Selection<any, T1, any, T2>;
 
-function appendDropdown(target: HTMLElement, label: HTMLElement, labelText: string, labelPositionLeft: string, select: HTMLElement, selectId: string) {
+function appendDropdown(target: HTMLElement, label: HTMLElement, labelText: string, labelPositionLeft: string, select: HTMLSelectElement, selectId: string) {
 
     label.innerHTML = labelText;
     label.style.position = "absolute";
@@ -46,14 +46,14 @@ function appendDropdown(target: HTMLElement, label: HTMLElement, labelText: stri
 
 }
 
-function refreshDropdown(options: VisualUpdateOptions, selectId: string) {
+function createDropdown(options: VisualUpdateOptions, selectId: string) {
 
-    let element: HTMLSelectElement = document.getElementById(selectId) as HTMLSelectElement;
-    let optionValue = element.value;
+    let select: HTMLSelectElement = document.getElementById(selectId) as HTMLSelectElement;
+    let optionValue = select.value;
     let dataViews = options.dataViews;
 
-    while (element.firstChild) {
-        element.removeChild(element.firstChild);
+    while (select.firstChild) {
+        select.removeChild(select.firstChild);
     }
 
     if (selectId == "operationSelect") {
@@ -61,24 +61,25 @@ function refreshDropdown(options: VisualUpdateOptions, selectId: string) {
         let categories = dataViews[0].categorical.categories[0].values;
         let categoriesAsc = [...categories].sort(d3.ascending);
 
+        let option = document.createElement("option");
+        option.value = "";
+        option.text = "--Select an operation to highlight--";
+        select.add(option);
+
         for (let i = 0; i < categoriesAsc.length; i++) {
 
             let option = document.createElement("option");
             option.value = categoriesAsc[i].valueOf() as string;
             option.text = categoriesAsc[i].valueOf() as string;
-            element.add(option);
+            select.add(option);
 
             if (option.value == optionValue) {
-                element.value = optionValue;
+                select.value = option.value;
             }
 
         }
 
-        if (element.selectedIndex == -1) {
-            element.value = categoriesAsc[0].valueOf() as string;
-        }
-
-    } else {
+    } else if (selectId == "xSelect" || selectId == "ySelect") {
 
         let values = dataViews[0].categorical.values;
         let displayNames = [];
@@ -93,16 +94,49 @@ function refreshDropdown(options: VisualUpdateOptions, selectId: string) {
             let option = document.createElement("option");
             option.value = displayNames[i];
             option.text = displayNames[i];
-            element.add(option);
+            select.add(option);
 
             if (option.value == optionValue) {
-                element.value = optionValue;
+                select.value = option.value;
             }
 
         }
 
-        if (element.selectedIndex == -1) {
-            element.value = displayNames[0];
+    }
+
+}
+
+function updateOperationDropdown(chartDataPoints: ChartDataPoint[]) {
+
+    let select: HTMLSelectElement = document.getElementById("operationSelect") as HTMLSelectElement;
+    let optionValue = select.value;
+
+    while (select.firstChild) {
+        select.removeChild(select.firstChild);
+    }
+
+    let option = document.createElement("option");
+    option.value = "";
+    option.text = "--Select an operation to highlight--";
+    select.add(option);
+
+    let operationOptions = [];
+
+    for (let i = 0; i < chartDataPoints.length; i++) {
+        operationOptions.push(chartDataPoints[i].operation);
+    }
+
+    let operationOptionsAsc = operationOptions.sort(d3.ascending);
+
+    for (let i = 0; i < operationOptionsAsc.length; i++) {
+
+        let option = document.createElement("option");
+        option.value = operationOptionsAsc[i].valueOf() as string;
+        option.text = operationOptionsAsc[i].valueOf() as string;
+        select.add(option);
+
+        if (option.value == optionValue) {
+            select.value = option.value;
         }
 
     }
@@ -180,39 +214,7 @@ function transformData(options: VisualUpdateOptions): ChartViewModel {
 
     }
 
-    let operationOptions = [];
-    let newOperationValues = [];
-
-    for (const option of operationSelect.options) {
-        operationOptions.push(option.label);
-    }
-    for (let i = 0; i < chartDataPoints.length; i++) {
-        newOperationValues.push(chartDataPoints[i].operation);
-    }
-    for (let i = 0; i < operationOptions.length; i++) {
-        if (!newOperationValues.includes(operationOptions[i])) {
-            operationSelect.remove(i);
-        }
-    }
-    if (!newOperationValues.includes(operationOption)) {
-        operationSelect.value = [...newOperationValues].sort(d3.ascending)[0];
-        operationOption = operationSelect.value;
-    }
-
-    for (let i = 0; i < chartDataPoints.length; i++) {
-
-        let operation = chartDataPoints[i].operation;
-        let x = chartDataPoints[i].x;
-        let y = chartDataPoints[i].y;
-
-        if (operation == operationOption) {
-            chartHighlight.push({
-                operation,
-                x,
-                y
-            })
-        }
-    }
+    updateOperationDropdown(chartDataPoints);
 
     return {
         dataPoints: chartDataPoints,
@@ -226,9 +228,9 @@ function transformData(options: VisualUpdateOptions): ChartViewModel {
 
 function createChart(options: VisualUpdateOptions, svg: Selection<any>, chart: Selection<SVGElement>, highlight: Selection<SVGElement>, dataLabel: Selection<SVGElement>, averageLines: Selection<SVGElement>, grid: Selection<SVGElement>, xAxis: Selection<SVGElement>, yAxis: Selection<SVGElement>, button: HTMLElement) {
 
-    refreshDropdown(options, "operationSelect");
-    refreshDropdown(options, "xSelect");
-    refreshDropdown(options, "ySelect");
+    createDropdown(options, "operationSelect");
+    createDropdown(options, "xSelect");
+    createDropdown(options, "ySelect");
 
     let width: number = options.viewport.width;
     let height: number = options.viewport.height;
@@ -472,17 +474,17 @@ export class Visual implements IVisual {
 
         this.operationLabel = document.createElement("label");
         this.operationSelect = document.createElement("select");
-        appendDropdown(this.target, this.operationLabel, "Operation: ", "100px", this.operationSelect, "operationSelect");
+        appendDropdown(this.target, this.operationLabel, "Operation: ", "100px", this.operationSelect as HTMLSelectElement, "operationSelect");
         this.operationOption = "";
 
         this.xLabel = document.createElement("label");
         this.xSelect = document.createElement("select");
-        appendDropdown(this.target, this.xLabel, "x: ", "500px", this.xSelect, "xSelect");
+        appendDropdown(this.target, this.xLabel, "x: ", "500px", this.xSelect as HTMLSelectElement, "xSelect");
         this.xOption = "";
 
         this.yLabel = document.createElement("label");
         this.ySelect = document.createElement("select");
-        appendDropdown(this.target, this.yLabel, "y: ", "700px", this.ySelect, "ySelect");
+        appendDropdown(this.target, this.yLabel, "y: ", "700px", this.ySelect as HTMLSelectElement, "ySelect");
         this.yOption = "";
 
         this.svg = d3.select(options.element)
