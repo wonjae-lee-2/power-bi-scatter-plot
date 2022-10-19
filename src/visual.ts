@@ -448,29 +448,9 @@ function createChart(options: VisualUpdateOptions, svg: Selection<any>, chart: S
         let xScaleZoomed = transform.rescaleX(xScale);
         let yScaleZoomed = transform.rescaleY(yScale);
 
-        chart
-            .attr("transform", transform)
-            .attr("stroke-width", 5 / transform.k);
-
-        highlightRegion
-            .selectAll("path")
-            .attr("transform", transform)
-            .attr("stroke-width", 10 / transform.k);
-
-        highlightOperation
-            .selectAll("path")
-            .attr("transform", transform)
-            .attr("stroke-width", 10 / transform.k);
-        highlightOperation
-            .selectAll("text")
-            .attr("transform", transform)
-            .attr("stroke-width", 1 / transform.k)
-            .attr("font-size", 14 / transform.k);
-
-        dataLabel
-            .attr("transform", transform)
-            .attr("stroke-width", 1 / transform.k)
-            .attr("font-size", 14 / transform.k);
+        grid
+            .call(xGrid, xScaleZoomed)
+            .call(yGrid, yScaleZoomed);
 
         xAxis
             .attr("transform", `translate(0, ${height - marginBottom})`)
@@ -480,6 +460,7 @@ function createChart(options: VisualUpdateOptions, svg: Selection<any>, chart: S
                 .attr("x", width - (marginRight / 4))
                 .attr("y", marginBottom / 4)
                 .attr("fill", "black")
+                .attr("font-weight", "600")
                 .attr("text-anchor", "end")
                 .text(xLabel)
                 .classed("xlabel", true)
@@ -493,6 +474,7 @@ function createChart(options: VisualUpdateOptions, svg: Selection<any>, chart: S
                 .attr("x", -marginLeft * (3 / 4))
                 .attr("y", marginTop / 2)
                 .attr("fill", "black")
+                .attr("font-weight", "600")
                 .attr("text-anchor", "start")
                 .text(yLabel)
                 .classed("ylabel", true)
@@ -502,70 +484,92 @@ function createChart(options: VisualUpdateOptions, svg: Selection<any>, chart: S
             .call(xAverageLine, xScaleZoomed)
             .call(yAverageLine, yScaleZoomed);
 
-        grid
-            .call(xGrid, xScaleZoomed)
-            .call(yGrid, yScaleZoomed);
+        chart
+            .attr("transform", transform)
+            .attr("stroke-width", 5 / transform.k);
+
+        dataLabel
+            .attr("transform", transform)
+            .attr("font-size", 14 / transform.k);
+
+        highlightRegion
+            .selectAll("path")
+            .attr("transform", transform)
+            .attr("stroke-width", 10 / transform.k);
+
+        highlightOperation
+            .selectAll("path")
+            .attr("transform", transform)
+            .attr("stroke-width", 10 / transform.k);
+        highlightOperation
+            .selectAll("text")
+            .attr("transform", transform)
+            .attr("font-size", 14 / transform.k);
 
     });
 
     svg.
         attr("viewBox", [0, 0, width, height]);
 
-    chart
-        .attr("stroke-linecap", "round")
+    grid
         .attr("stroke", "black")
+        .attr("stroke-opacity", 0.1);
+
+    averageLines
+        .attr("stroke", "#76b7b2")
+        .attr("stroke-width", "2")
+        .attr("stroke-dasharray", "4 2");
+
+    chart
+        .attr("stroke", "black")
+        .attr("stroke-linecap", "round")
         .attr("opacity", 0.2)
         .selectAll("path")
         .data(data)
         .join("path")
         .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
+
+    dataLabel
+        .attr("color", "black")
+        .attr("stroke-width", 0)
+        .attr("font-weight", "600")
+        .attr("opacity", 0.2)
+        .selectAll("text")
+        .data(data)
+        .join("text")
+        .attr("dx", "0.5em")
+        .attr("dy", "0.5em")
+        .attr("x", d => xScale(d.x))
+        .attr("y", d => yScale(d.y))
+        .text(d => d.operation);
 
     highlightRegion
         .selectAll("path")
         .data(highlightRegionData)
         .join("path")
+        .attr("stroke", "#4e79a7")
         .attr("stroke-linecap", "round")
-        .attr("stroke", "blue")
         .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
 
     highlightOperation
         .selectAll("path")
         .data(highlightOperationData)
         .join("path")
+        .attr("stroke", "#e15759")
         .attr("stroke-linecap", "round")
-        .attr("stroke", "red")
         .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
     highlightOperation
         .selectAll("text")
         .data(highlightOperationData)
         .join("text")
-        .attr("stroke", "black")
+        .attr("color", "black")
+        .attr("stroke-width", 0)
+        .attr("font-weight", "600")
         .attr("dx", "0.5em")
         .attr("dy", "0.5em")
         .attr("x", d => xScale(d.x))
         .attr("y", d => yScale(d.y))
         .text(d => d.operation);
-
-    dataLabel
-        .attr("stroke", "black")
-        .attr("opacity", 0.2)
-        .selectAll("text")
-        .data(data)
-        .join("text")
-        .attr("dx", "0.5em")
-        .attr("dy", "0.5em")
-        .attr("x", d => xScale(d.x))
-        .attr("y", d => yScale(d.y))
-        .text(d => d.operation);
-
-    averageLines
-        .attr("stroke", "blue")
-        .attr("stroke-opacity", 0.5)
-        .attr("stroke-dasharray", "4 1");
-
-    grid
-        .attr("stroke", "black")
-        .attr("stroke-opacity", 0.1);
 
     svg
         .call(zoom)
@@ -610,27 +614,27 @@ export class Visual implements IVisual {
         this.target = options.element;
 
         this.button = document.createElement("button");
-        this.button.innerHTML = "Reset";
+        this.button.innerHTML = "Re-center";
         this.button.style.position = "absolute";
-        this.button.style.top = "14px";
-        this.button.style.left = "120px";
+        this.button.style.top = "15px";
+        this.button.style.left = "10%";
         this.target.appendChild(this.button);
 
         this.regionLabel = document.createElement("label");
         this.regionSelect = document.createElement("select");
-        appendDropdown(this.target, this.regionLabel, "Region: ", "0px", "240px", this.regionSelect as HTMLSelectElement, "regionSelect");
+        appendDropdown(this.target, this.regionLabel, "Region: ", "0px", "25%", this.regionSelect as HTMLSelectElement, "regionSelect");
 
         this.operationLabel = document.createElement("label");
         this.operationSelect = document.createElement("select");
-        appendDropdown(this.target, this.operationLabel, "Operation: ", "30px", "240px", this.operationSelect as HTMLSelectElement, "operationSelect");
+        appendDropdown(this.target, this.operationLabel, "Operation: ", "30px", "25%", this.operationSelect as HTMLSelectElement, "operationSelect");
 
         this.xLabel = document.createElement("label");
         this.xSelect = document.createElement("select");
-        appendDropdown(this.target, this.xLabel, "x: ", "0px", "640px", this.xSelect as HTMLSelectElement, "xSelect");
+        appendDropdown(this.target, this.xLabel, "X: ", "0px", "60%", this.xSelect as HTMLSelectElement, "xSelect");
 
         this.yLabel = document.createElement("label");
         this.ySelect = document.createElement("select");
-        appendDropdown(this.target, this.yLabel, "y: ", "30px", "640px", this.ySelect as HTMLSelectElement, "ySelect");
+        appendDropdown(this.target, this.yLabel, "Y: ", "30px", "60%", this.ySelect as HTMLSelectElement, "ySelect");
 
         this.svg = d3.select(options.element)
             .append("svg")
