@@ -2,8 +2,18 @@
     "privileges": [],
     "dataRoles": [
         {
-            "name": "category",
-            "displayName": "Category",
+            "name": "year",
+            "displayName": "Year",
+            "kind": "Grouping"
+        },
+        {
+            "name": "region",
+            "displayName": "Region",
+            "kind": "Grouping"
+        },
+        {
+            "name": "operation",
+            "displayName": "Operation",
             "kind": "Grouping"
         },
         {
@@ -16,16 +26,40 @@
         {
             "conditions": [
                 {
-                    "category": {
+                    "year": {
+                        "max": 1
+                    }
+                },
+                {
+                    "region": {
+                        "max": 1
+                    }
+                },
+                {
+                    "operation": {
                         "max": 1
                     }
                 }
             ],
             "categorical": {
                 "categories": {
-                    "bind": {
-                        "to": "category"
-                    }
+                    "select": [
+                        {
+                            "bind": {
+                                "to": "year"
+                            }
+                        },
+                        {
+                            "bind": {
+                                "to": "region"
+                            }
+                        },
+                        {
+                            "bind": {
+                                "to": "operation"
+                            }
+                        }
+                    ]
                 },
                 "values": {
                     "for": {

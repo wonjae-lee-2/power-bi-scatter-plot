@@ -35,10 +35,13 @@ import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import * as d3 from "d3";
 type Selection<T1, T2 = T1> = d3.Selection<any, T1, any, T2>;
 
-function appendDropdown(target: HTMLElement, label: HTMLElement, labelText: string, labelPositionLeft: string, select: HTMLSelectElement, selectId: string) {
+import { agg, op, table } from "arquero";
+
+function appendDropdown(target: HTMLElement, label: HTMLElement, labelText: string, labelPositionTop: string, labelPositionLeft: string, select: HTMLSelectElement, selectId: string) {
 
     label.innerHTML = labelText;
     label.style.position = "absolute";
+    label.style.top = labelPositionTop;
     label.style.left = labelPositionLeft;
     select.id = selectId;
     label.appendChild(select);
@@ -56,21 +59,44 @@ function createDropdown(options: VisualUpdateOptions, selectId: string) {
         select.removeChild(select.firstChild);
     }
 
-    if (selectId == "operationSelect") {
+    if (selectId == "regionSelect") {
 
-        let categories = dataViews[0].categorical.categories[0].values;
-        let categoriesAsc = [...categories].sort(d3.ascending);
+        let option = document.createElement("option");
+        option.value = "";
+        option.text = "--Select a region to highlight--";
+        select.add(option);
+
+        let regions = dataViews[0].categorical.categories[1].values;
+        let regionsUniqueAsc = [...new Set(regions)].sort(d3.ascending);
+
+        for (let i = 0; i < regionsUniqueAsc.length; i++) {
+
+            let option = document.createElement("option");
+            option.value = regionsUniqueAsc[i].valueOf() as string;
+            option.text = regionsUniqueAsc[i].valueOf() as string;
+            select.add(option);
+
+            if (option.value == optionValue) {
+                select.value = option.value;
+            }
+
+        }
+
+    } else if (selectId == "operationSelect") {
 
         let option = document.createElement("option");
         option.value = "";
         option.text = "--Select an operation to highlight--";
         select.add(option);
 
-        for (let i = 0; i < categoriesAsc.length; i++) {
+        let operations = dataViews[0].categorical.categories[2].values;
+        let operationsUniqueAsc = [...new Set(operations)].sort(d3.ascending);
+
+        for (let i = 0; i < operationsUniqueAsc.length; i++) {
 
             let option = document.createElement("option");
-            option.value = categoriesAsc[i].valueOf() as string;
-            option.text = categoriesAsc[i].valueOf() as string;
+            option.value = operationsUniqueAsc[i].valueOf() as string;
+            option.text = operationsUniqueAsc[i].valueOf() as string;
             select.add(option);
 
             if (option.value == optionValue) {
@@ -106,6 +132,21 @@ function createDropdown(options: VisualUpdateOptions, selectId: string) {
 
 }
 
+interface ChartViewModel {
+    dataPoints: ChartDataPoint[];
+    highlightRegion: ChartDataPoint[];
+    highlightOperation: ChartDataPoint[];
+    xLabel: string;
+    yLabel: string;
+}
+
+interface ChartDataPoint {
+    region: string;
+    operation: string;
+    x: number;
+    y: number;
+}
+
 function updateOperationDropdown(chartDataPoints: ChartDataPoint[]) {
 
     let select: HTMLSelectElement = document.getElementById("operationSelect") as HTMLSelectElement;
@@ -126,13 +167,13 @@ function updateOperationDropdown(chartDataPoints: ChartDataPoint[]) {
         operationOptions.push(chartDataPoints[i].operation);
     }
 
-    let operationOptionsAsc = operationOptions.sort(d3.ascending);
+    let operationOptionsUniqueAsc = [...new Set(operationOptions)].sort(d3.ascending);
 
-    for (let i = 0; i < operationOptionsAsc.length; i++) {
+    for (let i = 0; i < operationOptionsUniqueAsc.length; i++) {
 
         let option = document.createElement("option");
-        option.value = operationOptionsAsc[i].valueOf() as string;
-        option.text = operationOptionsAsc[i].valueOf() as string;
+        option.value = operationOptionsUniqueAsc[i].valueOf() as string;
+        option.text = operationOptionsUniqueAsc[i].valueOf() as string;
         select.add(option);
 
         if (option.value == optionValue) {
@@ -143,26 +184,16 @@ function updateOperationDropdown(chartDataPoints: ChartDataPoint[]) {
 
 }
 
-interface ChartViewModel {
-    dataPoints: ChartDataPoint[];
-    highlight: ChartDataPoint[];
-    operationLabel: string;
-    xLabel: string;
-    yLabel: string;
-}
-
-interface ChartDataPoint {
-    operation: string;
-    x: number;
-    y: number;
-}
-
 function transformData(options: VisualUpdateOptions): ChartViewModel {
 
     let dataViews = options.dataViews;
-    let operationValues = dataViews[0].categorical.categories[0].values;
+    let yearValues = dataViews[0].categorical.categories[0].values;
+    let regionValues = dataViews[0].categorical.categories[1].values;
+    let operationValues = dataViews[0].categorical.categories[2].values;
     let measures = dataViews[0].categorical.values;
 
+    let regionSelect: HTMLSelectElement = document.getElementById("regionSelect") as HTMLSelectElement;
+    let regionOption = regionSelect.value;
     let operationSelect: HTMLSelectElement = document.getElementById("operationSelect") as HTMLSelectElement;
     let operationOption = operationSelect.value;
     let xSelect: HTMLSelectElement = document.getElementById("xSelect") as HTMLSelectElement;
@@ -173,7 +204,8 @@ function transformData(options: VisualUpdateOptions): ChartViewModel {
     let yValues = [];
 
     let chartDataPoints: ChartDataPoint[] = [];
-    let chartHighlight: ChartDataPoint[] = [];
+    let chartHighlightRegion: ChartDataPoint[] = [];
+    let chartHighlightOperation: ChartDataPoint[] = [];
 
     for (let i = 0; i < measures.length; i++) {
 
@@ -187,22 +219,41 @@ function transformData(options: VisualUpdateOptions): ChartViewModel {
 
     }
 
-    for (let i = 0; i < operationValues.length; i++) {
+    let yearValuesUnique = [...new Set(yearValues)];
 
-        if (xValues[i] !== null && yValues[i] !== null) {
+    if (yearValuesUnique.length == 1) {
 
-            let operation = operationValues[i].valueOf() as string;
-            let x = xValues[i].valueOf() as number;
-            let y = yValues[i].valueOf() as number;
+        let dt = table({
+            "region": regionValues,
+            "operation": operationValues,
+            "x": xValues,
+            "y": yValues
+        })
+
+        let aqData = dt
+            .impute({ x: () => 0 })
+            .impute({ y: () => 0 })
+            .filter(d => d.x !== 0 || d.y !== 0)
+
+        let aqObjects = aqData.objects();
+
+        aqObjects.forEach(element => {
+
+            let region = element["region"].valueOf() as string;
+            let operation = element["operation"].valueOf() as string;
+            let x = element["x"].valueOf() as number;
+            let y = element["y"].valueOf() as number;
 
             chartDataPoints.push({
+                region,
                 operation,
                 x,
                 y
             });
 
-            if (operation == operationOption) {
-                chartHighlight.push({
+            if (region == regionOption) {
+                chartHighlightRegion.push({
+                    region,
                     operation,
                     x,
                     y
@@ -210,24 +261,107 @@ function transformData(options: VisualUpdateOptions): ChartViewModel {
 
             }
 
-        }
+            if (operation == operationOption) {
+                chartHighlightOperation.push({
+                    region,
+                    operation,
+                    x,
+                    y
+                })
+
+            }
+
+        });
+
+        updateOperationDropdown(chartDataPoints);
+
+        return {
+            dataPoints: chartDataPoints,
+            highlightRegion: chartHighlightRegion,
+            highlightOperation: chartHighlightOperation,
+            xLabel: xOption,
+            yLabel: yOption,
+        };
+
+    } else {
+
+        let dt = table({
+            "year": yearValues,
+            "region": regionValues,
+            "operation": operationValues,
+            "x": xValues,
+            "y": yValues
+        });
+
+        let minYear = agg(dt, d => op.min(d.year));
+        let maxYear = agg(dt, d => op.max(d.year));
+
+        let aqData = dt.params({ minYear: minYear, maxYear: maxYear })
+            .filter((d, $) => d.year == $.minYear || d.year == $.maxYear)
+            .impute({ x: () => 0 })
+            .impute({ y: () => 0 })
+            .groupby("region", "operation")
+            .pivot("year", ["x", "y"])
+            .filter((d, $) => d[`x_${$.minYear}`] !== 0 || d[`x_${$.maxYear}`] !== 0 || d[`y_${$.minYear}`] !== 0 || d[`y_${$.maxYear}`] !== 0)
+            .derive({ x: (d, $) => d[`x_${$.maxYear}`] - d[`x_${$.minYear}`] })
+            .derive({ y: (d, $) => d[`y_${$.maxYear}`] - d[`y_${$.minYear}`] })
+            .select("region", "operation", "x", "y");
+
+        let aqObjects = aqData.objects();
+
+        aqObjects.forEach(element => {
+
+            let region = element["region"].valueOf() as string;
+            let operation = element["operation"].valueOf() as string;
+            let x = element["x"].valueOf() as number;
+            let y = element["y"].valueOf() as number;
+
+            chartDataPoints.push({
+                region,
+                operation,
+                x,
+                y
+            });
+
+            if (region == regionOption) {
+                chartHighlightRegion.push({
+                    region,
+                    operation,
+                    x,
+                    y
+                })
+
+            }
+
+            if (operation == operationOption) {
+                chartHighlightOperation.push({
+                    region,
+                    operation,
+                    x,
+                    y
+                })
+
+            }
+
+        });
+
+        updateOperationDropdown(chartDataPoints);
+
+        return {
+            dataPoints: chartDataPoints,
+            highlightRegion: chartHighlightRegion,
+            highlightOperation: chartHighlightOperation,
+            xLabel: xOption,
+            yLabel: yOption,
+        };
 
     }
 
-    updateOperationDropdown(chartDataPoints);
-
-    return {
-        dataPoints: chartDataPoints,
-        highlight: chartHighlight,
-        operationLabel: operationOption,
-        xLabel: xOption,
-        yLabel: yOption,
-    };
-
 }
 
-function createChart(options: VisualUpdateOptions, svg: Selection<any>, chart: Selection<SVGElement>, highlight: Selection<SVGElement>, dataLabel: Selection<SVGElement>, averageLines: Selection<SVGElement>, grid: Selection<SVGElement>, xAxis: Selection<SVGElement>, yAxis: Selection<SVGElement>, button: HTMLElement) {
+function createChart(options: VisualUpdateOptions, svg: Selection<any>, chart: Selection<SVGElement>, highlightRegion: Selection<SVGElement>, highlightOperation: Selection<SVGElement>, dataLabel: Selection<SVGElement>, averageLines: Selection<SVGElement>, grid: Selection<SVGElement>, xAxis: Selection<SVGElement>, yAxis: Selection<SVGElement>, button: HTMLElement) {
 
+    createDropdown(options, "regionSelect");
     createDropdown(options, "operationSelect");
     createDropdown(options, "xSelect");
     createDropdown(options, "ySelect");
@@ -236,15 +370,15 @@ function createChart(options: VisualUpdateOptions, svg: Selection<any>, chart: S
     let height: number = options.viewport.height;
     let marginLeft = 40;
     let marginRight = 80;
-    let marginTop = 50;
-    let marginBottom = 50;
+    let marginTop = 120;
+    let marginBottom = 20;
     let xRange = [marginLeft, width - marginRight];
     let yRange = [height - marginBottom, marginTop];
 
     let viewModel: ChartViewModel = transformData(options);
     let data = viewModel.dataPoints;
-    let highlightData = viewModel.highlight;
-    let operationLabel: string = viewModel.operationLabel;
+    let highlightRegionData = viewModel.highlightRegion;
+    let highlightOperationData = viewModel.highlightOperation;
     let xLabel: string = viewModel.xLabel;
     let yLabel: string = viewModel.yLabel;
     let xDomain = d3.extent(data, d => d.x);
@@ -318,11 +452,16 @@ function createChart(options: VisualUpdateOptions, svg: Selection<any>, chart: S
             .attr("transform", transform)
             .attr("stroke-width", 5 / transform.k);
 
-        highlight
+        highlightRegion
             .selectAll("path")
             .attr("transform", transform)
             .attr("stroke-width", 10 / transform.k);
-        highlight
+
+        highlightOperation
+            .selectAll("path")
+            .attr("transform", transform)
+            .attr("stroke-width", 10 / transform.k);
+        highlightOperation
             .selectAll("text")
             .attr("transform", transform)
             .attr("stroke-width", 1 / transform.k)
@@ -381,16 +520,24 @@ function createChart(options: VisualUpdateOptions, svg: Selection<any>, chart: S
         .join("path")
         .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
 
-    highlight
+    highlightRegion
         .selectAll("path")
-        .data(highlightData)
+        .data(highlightRegionData)
+        .join("path")
+        .attr("stroke-linecap", "round")
+        .attr("stroke", "blue")
+        .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
+
+    highlightOperation
+        .selectAll("path")
+        .data(highlightOperationData)
         .join("path")
         .attr("stroke-linecap", "round")
         .attr("stroke", "red")
         .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
-    highlight
+    highlightOperation
         .selectAll("text")
-        .data(highlightData)
+        .data(highlightOperationData)
         .join("text")
         .attr("stroke", "black")
         .attr("dx", "0.5em")
@@ -431,12 +578,6 @@ function createChart(options: VisualUpdateOptions, svg: Selection<any>, chart: S
             .transition()
             .duration(750)
             .call(zoom.transform, d3.zoomIdentity);
-    };
-
-    return {
-        operationOption: operationLabel,
-        xOption: xLabel,
-        yOption: yLabel
     }
 
 }
@@ -445,19 +586,19 @@ export class Visual implements IVisual {
 
     private target: HTMLElement;
     private button: HTMLElement;
+    private regionLabel: HTMLElement;
+    private regionSelect: HTMLElement;
     private operationLabel: HTMLElement;
     private operationSelect: HTMLElement;
-    private operationOption: string;
     private xLabel: HTMLElement;
     private xSelect: HTMLElement;
-    private xOption: string;
     private yLabel: HTMLElement;
     private ySelect: HTMLElement;
-    private yOption: string;
 
     private svg: Selection<any>;
     private chart: Selection<SVGElement>;
-    private highlight: Selection<SVGElement>;
+    private highlightRegion: Selection<SVGElement>;
+    private highlightOperation: Selection<SVGElement>;
     private dataLabel: Selection<SVGElement>;
     private averageLines: Selection<SVGElement>;
     private xAxis: Selection<SVGElement>;
@@ -470,22 +611,26 @@ export class Visual implements IVisual {
 
         this.button = document.createElement("button");
         this.button.innerHTML = "Reset";
+        this.button.style.position = "absolute";
+        this.button.style.top = "14px";
+        this.button.style.left = "120px";
         this.target.appendChild(this.button);
+
+        this.regionLabel = document.createElement("label");
+        this.regionSelect = document.createElement("select");
+        appendDropdown(this.target, this.regionLabel, "Region: ", "0px", "240px", this.regionSelect as HTMLSelectElement, "regionSelect");
 
         this.operationLabel = document.createElement("label");
         this.operationSelect = document.createElement("select");
-        appendDropdown(this.target, this.operationLabel, "Operation: ", "100px", this.operationSelect as HTMLSelectElement, "operationSelect");
-        this.operationOption = "";
+        appendDropdown(this.target, this.operationLabel, "Operation: ", "30px", "240px", this.operationSelect as HTMLSelectElement, "operationSelect");
 
         this.xLabel = document.createElement("label");
         this.xSelect = document.createElement("select");
-        appendDropdown(this.target, this.xLabel, "x: ", "500px", this.xSelect as HTMLSelectElement, "xSelect");
-        this.xOption = "";
+        appendDropdown(this.target, this.xLabel, "x: ", "0px", "640px", this.xSelect as HTMLSelectElement, "xSelect");
 
         this.yLabel = document.createElement("label");
         this.ySelect = document.createElement("select");
-        appendDropdown(this.target, this.yLabel, "y: ", "700px", this.ySelect as HTMLSelectElement, "ySelect");
-        this.yOption = "";
+        appendDropdown(this.target, this.yLabel, "y: ", "30px", "640px", this.ySelect as HTMLSelectElement, "ySelect");
 
         this.svg = d3.select(options.element)
             .append("svg")
@@ -493,9 +638,12 @@ export class Visual implements IVisual {
         this.chart = this.svg
             .append("g")
             .classed("chart", true);
-        this.highlight = this.svg
+        this.highlightRegion = this.svg
             .append("g")
-            .classed("highlight", true);
+            .classed("highlightRegion", true);
+        this.highlightOperation = this.svg
+            .append("g")
+            .classed("highlightOperation", true);
         this.dataLabel = this.svg
             .append("g")
             .classed("dataLabel", true);
@@ -516,11 +664,12 @@ export class Visual implements IVisual {
 
     public update(options: VisualUpdateOptions) {
 
-        let optionValues = createChart(
+        createChart(
             options,
             this.svg,
             this.chart,
-            this.highlight,
+            this.highlightRegion,
+            this.highlightOperation,
             this.dataLabel,
             this.averageLines,
             this.grid,
@@ -528,16 +677,33 @@ export class Visual implements IVisual {
             this.yAxis,
             this.button
         );
-        this.operationOption = optionValues.operationOption;
-        this.xOption = optionValues.xOption;
-        this.yOption = optionValues.yOption;
+
+        this.regionSelect.onchange = () => {
+
+            createChart(
+                options,
+                this.svg,
+                this.chart,
+                this.highlightRegion,
+                this.highlightOperation,
+                this.dataLabel,
+                this.averageLines,
+                this.grid,
+                this.xAxis,
+                this.yAxis,
+                this.button
+            );
+
+        }
 
         this.operationSelect.onchange = () => {
-            let optionValues = createChart(
+
+            createChart(
                 options,
                 this.svg,
                 this.chart,
-                this.highlight,
+                this.highlightRegion,
+                this.highlightOperation,
                 this.dataLabel,
                 this.averageLines,
                 this.grid,
@@ -545,17 +711,17 @@ export class Visual implements IVisual {
                 this.yAxis,
                 this.button
             );
-            this.operationOption = optionValues.operationOption;
-            this.xOption = optionValues.xOption;
-            this.yOption = optionValues.yOption;
-        };
+
+        }
 
         this.xSelect.onchange = () => {
-            let optionValues = createChart(
+
+            createChart(
                 options,
                 this.svg,
                 this.chart,
-                this.highlight,
+                this.highlightRegion,
+                this.highlightOperation,
                 this.dataLabel,
                 this.averageLines,
                 this.grid,
@@ -563,17 +729,17 @@ export class Visual implements IVisual {
                 this.yAxis,
                 this.button
             );
-            this.operationOption = optionValues.operationOption;
-            this.xOption = optionValues.xOption;
-            this.yOption = optionValues.yOption;
-        };
+
+        }
 
         this.ySelect.onchange = () => {
-            let optionValues = createChart(
+
+            createChart(
                 options,
                 this.svg,
                 this.chart,
-                this.highlight,
+                this.highlightRegion,
+                this.highlightOperation,
                 this.dataLabel,
                 this.averageLines,
                 this.grid,
@@ -581,10 +747,8 @@ export class Visual implements IVisual {
                 this.yAxis,
                 this.button
             );
-            this.operationOption = optionValues.operationOption;
-            this.xOption = optionValues.xOption;
-            this.yOption = optionValues.yOption;
-        };
+
+        }
 
     }
 
