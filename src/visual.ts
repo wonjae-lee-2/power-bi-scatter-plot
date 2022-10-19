@@ -35,21 +35,9 @@ import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import * as d3 from "d3";
 type Selection<T1, T2 = T1> = d3.Selection<any, T1, any, T2>;
 
-import { agg, op, table } from "arquero";
+import * as aq from "arquero";
 
-function appendDropdown(target: HTMLElement, label: HTMLElement, labelText: string, labelPositionTop: string, labelPositionLeft: string, select: HTMLSelectElement, selectId: string) {
-
-    label.innerHTML = labelText;
-    label.style.position = "absolute";
-    label.style.top = labelPositionTop;
-    label.style.left = labelPositionLeft;
-    select.id = selectId;
-    label.appendChild(select);
-    target.appendChild(label);
-
-}
-
-function createDropdown(options: VisualUpdateOptions, selectId: string) {
+function addDropdownOptions(options: VisualUpdateOptions, selectId: string) {
 
     let select: HTMLSelectElement = document.getElementById(selectId) as HTMLSelectElement;
     let optionValue = select.value;
@@ -223,7 +211,7 @@ function transformData(options: VisualUpdateOptions): ChartViewModel {
 
     if (yearValuesUnique.length == 1) {
 
-        let dt = table({
+        let dt = aq.table({
             "region": regionValues,
             "operation": operationValues,
             "x": xValues,
@@ -285,7 +273,7 @@ function transformData(options: VisualUpdateOptions): ChartViewModel {
 
     } else {
 
-        let dt = table({
+        let dt = aq.table({
             "year": yearValues,
             "region": regionValues,
             "operation": operationValues,
@@ -293,8 +281,8 @@ function transformData(options: VisualUpdateOptions): ChartViewModel {
             "y": yValues
         });
 
-        let minYear = agg(dt, d => op.min(d.year));
-        let maxYear = agg(dt, d => op.max(d.year));
+        let minYear = aq.agg(dt, d => aq.op.min(d.year));
+        let maxYear = aq.agg(dt, d => aq.op.max(d.year));
 
         let aqData = dt.params({ minYear: minYear, maxYear: maxYear })
             .filter((d, $) => d.year == $.minYear || d.year == $.maxYear)
@@ -359,244 +347,13 @@ function transformData(options: VisualUpdateOptions): ChartViewModel {
 
 }
 
-function createChart(options: VisualUpdateOptions, svg: Selection<any>, chart: Selection<SVGElement>, highlightRegion: Selection<SVGElement>, highlightOperation: Selection<SVGElement>, dataLabel: Selection<SVGElement>, averageLines: Selection<SVGElement>, grid: Selection<SVGElement>, xAxis: Selection<SVGElement>, yAxis: Selection<SVGElement>, button: HTMLElement) {
-
-    createDropdown(options, "regionSelect");
-    createDropdown(options, "operationSelect");
-    createDropdown(options, "xSelect");
-    createDropdown(options, "ySelect");
-
-    let width: number = options.viewport.width;
-    let height: number = options.viewport.height;
-    let marginLeft = 40;
-    let marginRight = 80;
-    let marginTop = 120;
-    let marginBottom = 20;
-    let xRange = [marginLeft, width - marginRight];
-    let yRange = [height - marginBottom, marginTop];
-
-    let viewModel: ChartViewModel = transformData(options);
-    let data = viewModel.dataPoints;
-    let highlightRegionData = viewModel.highlightRegion;
-    let highlightOperationData = viewModel.highlightOperation;
-    let xLabel: string = viewModel.xLabel;
-    let yLabel: string = viewModel.yLabel;
-    let xDomain = d3.extent(data, d => d.x);
-    let yDomain = d3.extent(data, d => d.y);
-    let xScale = d3.scaleLinear(xDomain, xRange);
-    let yScale = d3.scaleLinear(yDomain, yRange);
-    let xMean = [d3.mean(data, d => d.x)];
-    let yMean = [d3.mean(data, d => d.y)];
-
-    let xAxisFunction = (xScale) => d3.axisBottom(xScale).ticks(5, "~s");
-    let yAxisFunction = (yScale) => d3.axisLeft(yScale).ticks(5, "~s");
-    let xGrid = (g, xScale) => g
-        .selectAll(".xGrid")
-        .data(xScale.ticks(5))
-        .join(
-            enter => enter.append("line")
-                .attr("y1", marginTop / 2)
-                .attr("y2", height - (marginBottom / 2))
-                .classed("xGrid", true),
-            update => update,
-            exit => exit.remove()
-        )
-        .attr("x1", d => xScale(d))
-        .attr("x2", d => xScale(d));
-    let yGrid = (g, yScale) => g
-        .selectAll(".yGrid")
-        .data(yScale.ticks(5))
-        .join(
-            enter => enter.append("line")
-                .attr("x1", marginLeft / 2)
-                .attr("x2", width - (marginRight / 2))
-                .classed("yGrid", true),
-            update => update,
-            exit => exit.remove()
-        )
-        .attr("y1", d => yScale(d))
-        .attr("y2", d => yScale(d));
-    let xAverageLine = (g, xScale) => g
-        .selectAll(".xAverageLine")
-        .data(xMean)
-        .join(
-            enter => enter.append("line")
-                .attr("y1", marginTop / 2)
-                .attr("y2", height - (marginBottom / 2))
-                .classed("xAverageLine", true),
-            update => update,
-            exit => exit.remove()
-        )
-        .attr("x1", d => xScale(d))
-        .attr("x2", d => xScale(d));
-    let yAverageLine = (g, yScale) => g
-        .selectAll(".yAverageLine")
-        .data(yMean)
-        .join(
-            enter => enter.append("line")
-                .attr("x1", marginLeft / 2)
-                .attr("x2", width - (marginRight / 2))
-                .classed("yAverageLine", true),
-            update => update,
-            exit => exit.remove()
-        )
-        .attr("y1", d => yScale(d))
-        .attr("y2", d => yScale(d));
-    let zoom = d3.zoom().scaleExtent([0, Infinity]).on("zoom", (event) => {
-
-        let transform = event.transform;
-        let xScaleZoomed = transform.rescaleX(xScale);
-        let yScaleZoomed = transform.rescaleY(yScale);
-
-        grid
-            .call(xGrid, xScaleZoomed)
-            .call(yGrid, yScaleZoomed);
-
-        xAxis
-            .attr("transform", `translate(0, ${height - marginBottom})`)
-            .call(xAxisFunction(xScaleZoomed))
-            .call(g => g.selectAll(".domain, .xlabel").remove())
-            .call(g => g.append("text")
-                .attr("x", width - (marginRight / 4))
-                .attr("y", marginBottom / 4)
-                .attr("fill", "black")
-                .attr("font-weight", "600")
-                .attr("text-anchor", "end")
-                .text(xLabel)
-                .classed("xlabel", true)
-            );
-
-        yAxis
-            .attr("transform", `translate(${marginLeft}, 0)`)
-            .call(yAxisFunction(yScaleZoomed))
-            .call(g => g.selectAll(".domain, .ylabel").remove())
-            .call(g => g.append("text")
-                .attr("x", -marginLeft * (3 / 4))
-                .attr("y", marginTop / 2)
-                .attr("fill", "black")
-                .attr("font-weight", "600")
-                .attr("text-anchor", "start")
-                .text(yLabel)
-                .classed("ylabel", true)
-            );
-
-        averageLines
-            .call(xAverageLine, xScaleZoomed)
-            .call(yAverageLine, yScaleZoomed);
-
-        chart
-            .attr("transform", transform)
-            .attr("stroke-width", 5 / transform.k);
-
-        dataLabel
-            .attr("transform", transform)
-            .attr("font-size", 14 / transform.k);
-
-        highlightRegion
-            .selectAll("path")
-            .attr("transform", transform)
-            .attr("stroke-width", 10 / transform.k);
-
-        highlightOperation
-            .selectAll("path")
-            .attr("transform", transform)
-            .attr("stroke-width", 10 / transform.k);
-        highlightOperation
-            .selectAll("text")
-            .attr("transform", transform)
-            .attr("font-size", 14 / transform.k);
-
-    });
-
-    svg.
-        attr("viewBox", [0, 0, width, height]);
-
-    grid
-        .attr("stroke", "black")
-        .attr("stroke-opacity", 0.1);
-
-    averageLines
-        .attr("stroke", "#76b7b2")
-        .attr("stroke-width", "2")
-        .attr("stroke-dasharray", "4 2");
-
-    chart
-        .attr("stroke", "black")
-        .attr("stroke-linecap", "round")
-        .attr("opacity", 0.2)
-        .selectAll("path")
-        .data(data)
-        .join("path")
-        .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
-
-    dataLabel
-        .attr("color", "black")
-        .attr("stroke-width", 0)
-        .attr("font-weight", "600")
-        .attr("opacity", 0.2)
-        .selectAll("text")
-        .data(data)
-        .join("text")
-        .attr("dx", "0.5em")
-        .attr("dy", "0.5em")
-        .attr("x", d => xScale(d.x))
-        .attr("y", d => yScale(d.y))
-        .text(d => d.operation);
-
-    highlightRegion
-        .selectAll("path")
-        .data(highlightRegionData)
-        .join("path")
-        .attr("stroke", "#4e79a7")
-        .attr("stroke-linecap", "round")
-        .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
-
-    highlightOperation
-        .selectAll("path")
-        .data(highlightOperationData)
-        .join("path")
-        .attr("stroke", "#e15759")
-        .attr("stroke-linecap", "round")
-        .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
-    highlightOperation
-        .selectAll("text")
-        .data(highlightOperationData)
-        .join("text")
-        .attr("color", "black")
-        .attr("stroke-width", 0)
-        .attr("font-weight", "600")
-        .attr("dx", "0.5em")
-        .attr("dy", "0.5em")
-        .attr("x", d => xScale(d.x))
-        .attr("y", d => yScale(d.y))
-        .text(d => d.operation);
-
-    svg
-        .call(zoom)
-        .transition()
-        .duration(750)
-        .call(zoom.transform, d3.zoomIdentity);
-
-    button.onclick = () => {
-        svg
-            .transition()
-            .duration(750)
-            .call(zoom.transform, d3.zoomIdentity);
-    }
-
-}
-
 export class Visual implements IVisual {
 
     private target: HTMLElement;
     private button: HTMLElement;
-    private regionLabel: HTMLElement;
     private regionSelect: HTMLElement;
-    private operationLabel: HTMLElement;
     private operationSelect: HTMLElement;
-    private xLabel: HTMLElement;
     private xSelect: HTMLElement;
-    private yLabel: HTMLElement;
     private ySelect: HTMLElement;
 
     private svg: Selection<any>;
@@ -609,6 +366,250 @@ export class Visual implements IVisual {
     private yAxis: Selection<SVGElement>;
     private grid: Selection<SVGElement>;
 
+    private appendDropdown(labelText: string, labelPositionTop: string, labelPositionLeft: string, selectId: string) {
+
+        let label = document.createElement("label");
+        let select = document.createElement("select");
+
+        label.innerText = labelText;
+        label.style.position = "absolute";
+        label.style.top = labelPositionTop;
+        label.style.left = labelPositionLeft;
+        select.id = selectId;
+        label.appendChild(select);
+        this.target.appendChild(label);
+
+        return select;
+
+    }
+
+    private drawChart(options: VisualUpdateOptions) {
+
+        addDropdownOptions(options, "regionSelect");
+        addDropdownOptions(options, "operationSelect");
+        addDropdownOptions(options, "xSelect");
+        addDropdownOptions(options, "ySelect");
+
+        let width: number = options.viewport.width;
+        let height: number = options.viewport.height;
+        let marginLeft = 40;
+        let marginRight = 80;
+        let marginTop = 120;
+        let marginBottom = 20;
+        let xRange = [marginLeft, width - marginRight];
+        let yRange = [height - marginBottom, marginTop];
+
+        let viewModel: ChartViewModel = transformData(options);
+        let data = viewModel.dataPoints;
+        let highlightRegionData = viewModel.highlightRegion;
+        let highlightOperationData = viewModel.highlightOperation;
+        let xLabel: string = viewModel.xLabel;
+        let yLabel: string = viewModel.yLabel;
+        let xDomain = d3.extent(data, d => d.x);
+        let yDomain = d3.extent(data, d => d.y);
+        let xScale = d3.scaleLinear(xDomain, xRange);
+        let yScale = d3.scaleLinear(yDomain, yRange);
+        let xMean = [d3.mean(data, d => d.x)];
+        let yMean = [d3.mean(data, d => d.y)];
+
+        let xAxisFunction = (xScale) => d3.axisBottom(xScale).ticks(5, "~s");
+        let yAxisFunction = (yScale) => d3.axisLeft(yScale).ticks(5, "~s");
+        let xGrid = (g, xScale) => g
+            .selectAll(".xGrid")
+            .data(xScale.ticks(5))
+            .join(
+                enter => enter.append("line")
+                    .attr("y1", marginTop / 2)
+                    .attr("y2", height - (marginBottom / 2))
+                    .classed("xGrid", true),
+                update => update,
+                exit => exit.remove()
+            )
+            .attr("x1", d => xScale(d))
+            .attr("x2", d => xScale(d));
+        let yGrid = (g, yScale) => g
+            .selectAll(".yGrid")
+            .data(yScale.ticks(5))
+            .join(
+                enter => enter.append("line")
+                    .attr("x1", marginLeft / 2)
+                    .attr("x2", width - (marginRight / 2))
+                    .classed("yGrid", true),
+                update => update,
+                exit => exit.remove()
+            )
+            .attr("y1", d => yScale(d))
+            .attr("y2", d => yScale(d));
+        let xAverageLine = (g, xScale) => g
+            .selectAll(".xAverageLine")
+            .data(xMean)
+            .join(
+                enter => enter.append("line")
+                    .attr("y1", marginTop / 2)
+                    .attr("y2", height - (marginBottom / 2))
+                    .classed("xAverageLine", true),
+                update => update,
+                exit => exit.remove()
+            )
+            .attr("x1", d => xScale(d))
+            .attr("x2", d => xScale(d));
+        let yAverageLine = (g, yScale) => g
+            .selectAll(".yAverageLine")
+            .data(yMean)
+            .join(
+                enter => enter.append("line")
+                    .attr("x1", marginLeft / 2)
+                    .attr("x2", width - (marginRight / 2))
+                    .classed("yAverageLine", true),
+                update => update,
+                exit => exit.remove()
+            )
+            .attr("y1", d => yScale(d))
+            .attr("y2", d => yScale(d));
+        let zoom = d3.zoom().scaleExtent([0, Infinity]).on("zoom", (event) => {
+
+            let transform = event.transform;
+            let xScaleZoomed = transform.rescaleX(xScale);
+            let yScaleZoomed = transform.rescaleY(yScale);
+
+            this.grid
+                .call(xGrid, xScaleZoomed)
+                .call(yGrid, yScaleZoomed);
+
+            this.xAxis
+                .attr("transform", `translate(0, ${height - marginBottom})`)
+                .call(xAxisFunction(xScaleZoomed))
+                .call(g => g.selectAll(".domain, .xlabel").remove())
+                .call(g => g.append("text")
+                    .attr("x", width - (marginRight / 4))
+                    .attr("y", marginBottom / 4)
+                    .attr("fill", "black")
+                    .attr("font-weight", "600")
+                    .attr("text-anchor", "end")
+                    .text(xLabel)
+                    .classed("xlabel", true)
+                );
+
+            this.yAxis
+                .attr("transform", `translate(${marginLeft}, 0)`)
+                .call(yAxisFunction(yScaleZoomed))
+                .call(g => g.selectAll(".domain, .ylabel").remove())
+                .call(g => g.append("text")
+                    .attr("x", -marginLeft * (3 / 4))
+                    .attr("y", marginTop / 2)
+                    .attr("fill", "black")
+                    .attr("font-weight", "600")
+                    .attr("text-anchor", "start")
+                    .text(yLabel)
+                    .classed("ylabel", true)
+                );
+
+            this.averageLines
+                .call(xAverageLine, xScaleZoomed)
+                .call(yAverageLine, yScaleZoomed);
+
+            this.chart
+                .attr("transform", transform)
+                .attr("stroke-width", 5 / transform.k);
+
+            this.dataLabel
+                .attr("transform", transform)
+                .attr("font-size", 14 / transform.k);
+
+            this.highlightRegion
+                .selectAll("path")
+                .attr("transform", transform)
+                .attr("stroke-width", 10 / transform.k);
+
+            this.highlightOperation
+                .selectAll("path")
+                .attr("transform", transform)
+                .attr("stroke-width", 10 / transform.k);
+            this.highlightOperation
+                .selectAll("text")
+                .attr("transform", transform)
+                .attr("font-size", 14 / transform.k);
+
+        });
+
+        this.svg.
+            attr("viewBox", [0, 0, width, height]);
+
+        this.grid
+            .attr("stroke", "black")
+            .attr("stroke-opacity", 0.1);
+
+        this.averageLines
+            .attr("stroke", "#76b7b2")
+            .attr("stroke-width", "2")
+            .attr("stroke-dasharray", "4 2");
+
+        this.chart
+            .attr("stroke", "black")
+            .attr("stroke-linecap", "round")
+            .attr("opacity", 0.2)
+            .selectAll("path")
+            .data(data)
+            .join("path")
+            .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
+
+        this.dataLabel
+            .attr("color", "black")
+            .attr("stroke-width", 0)
+            .attr("font-weight", "600")
+            .attr("opacity", 0.2)
+            .selectAll("text")
+            .data(data)
+            .join("text")
+            .attr("dx", "0.5em")
+            .attr("dy", "0.5em")
+            .attr("x", d => xScale(d.x))
+            .attr("y", d => yScale(d.y))
+            .text(d => d.operation);
+
+        this.highlightRegion
+            .selectAll("path")
+            .data(highlightRegionData)
+            .join("path")
+            .attr("stroke", "#4e79a7")
+            .attr("stroke-linecap", "round")
+            .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
+
+        this.highlightOperation
+            .selectAll("path")
+            .data(highlightOperationData)
+            .join("path")
+            .attr("stroke", "#e15759")
+            .attr("stroke-linecap", "round")
+            .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
+        this.highlightOperation
+            .selectAll("text")
+            .data(highlightOperationData)
+            .join("text")
+            .attr("color", "black")
+            .attr("stroke-width", 0)
+            .attr("font-weight", "600")
+            .attr("dx", "0.5em")
+            .attr("dy", "0.5em")
+            .attr("x", d => xScale(d.x))
+            .attr("y", d => yScale(d.y))
+            .text(d => d.operation);
+
+        this.svg
+            .call(zoom)
+            .transition()
+            .duration(750)
+            .call(zoom.transform, d3.zoomIdentity);
+
+        this.button.onclick = () => {
+            this.svg
+                .transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity);
+        }
+
+    }
+
     constructor(options: VisualConstructorOptions) {
 
         this.target = options.element;
@@ -620,21 +621,10 @@ export class Visual implements IVisual {
         this.button.style.left = "10%";
         this.target.appendChild(this.button);
 
-        this.regionLabel = document.createElement("label");
-        this.regionSelect = document.createElement("select");
-        appendDropdown(this.target, this.regionLabel, "Region: ", "0px", "25%", this.regionSelect as HTMLSelectElement, "regionSelect");
-
-        this.operationLabel = document.createElement("label");
-        this.operationSelect = document.createElement("select");
-        appendDropdown(this.target, this.operationLabel, "Operation: ", "30px", "25%", this.operationSelect as HTMLSelectElement, "operationSelect");
-
-        this.xLabel = document.createElement("label");
-        this.xSelect = document.createElement("select");
-        appendDropdown(this.target, this.xLabel, "X: ", "0px", "60%", this.xSelect as HTMLSelectElement, "xSelect");
-
-        this.yLabel = document.createElement("label");
-        this.ySelect = document.createElement("select");
-        appendDropdown(this.target, this.yLabel, "Y: ", "30px", "60%", this.ySelect as HTMLSelectElement, "ySelect");
+        this.regionSelect = this.appendDropdown("Region: ", "0px", "25%", "regionSelect");
+        this.operationSelect = this.appendDropdown("Operation: ", "30px", "25%", "operationSelect");
+        this.xSelect = this.appendDropdown("X: ", "0px", "60%", "xSelect");
+        this.ySelect = this.appendDropdown("Y: ", "30px", "60%", "ySelect");
 
         this.svg = d3.select(options.element)
             .append("svg")
@@ -668,89 +658,29 @@ export class Visual implements IVisual {
 
     public update(options: VisualUpdateOptions) {
 
-        createChart(
-            options,
-            this.svg,
-            this.chart,
-            this.highlightRegion,
-            this.highlightOperation,
-            this.dataLabel,
-            this.averageLines,
-            this.grid,
-            this.xAxis,
-            this.yAxis,
-            this.button
-        );
+        this.drawChart(options);
 
         this.regionSelect.onchange = () => {
 
-            createChart(
-                options,
-                this.svg,
-                this.chart,
-                this.highlightRegion,
-                this.highlightOperation,
-                this.dataLabel,
-                this.averageLines,
-                this.grid,
-                this.xAxis,
-                this.yAxis,
-                this.button
-            );
+            this.drawChart(options);
 
         }
 
         this.operationSelect.onchange = () => {
 
-            createChart(
-                options,
-                this.svg,
-                this.chart,
-                this.highlightRegion,
-                this.highlightOperation,
-                this.dataLabel,
-                this.averageLines,
-                this.grid,
-                this.xAxis,
-                this.yAxis,
-                this.button
-            );
+            this.drawChart(options);
 
         }
 
         this.xSelect.onchange = () => {
 
-            createChart(
-                options,
-                this.svg,
-                this.chart,
-                this.highlightRegion,
-                this.highlightOperation,
-                this.dataLabel,
-                this.averageLines,
-                this.grid,
-                this.xAxis,
-                this.yAxis,
-                this.button
-            );
+            this.drawChart(options);
 
         }
 
         this.ySelect.onchange = () => {
 
-            createChart(
-                options,
-                this.svg,
-                this.chart,
-                this.highlightRegion,
-                this.highlightOperation,
-                this.dataLabel,
-                this.averageLines,
-                this.grid,
-                this.xAxis,
-                this.yAxis,
-                this.button
-            );
+            this.drawChart(options);
 
         }
 
