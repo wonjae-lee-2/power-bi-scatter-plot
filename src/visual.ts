@@ -37,6 +37,7 @@ type Selection<T1, T2 = T1> = d3.Selection<any, T1, any, T2>;
 
 import * as aq from "arquero";
 import ColumnTable from "arquero/dist/types/table/column-table";
+import { RenameMap, Select } from "arquero/dist/types/table/transformable";
 
 export class Visual implements IVisual {
 
@@ -200,7 +201,7 @@ export class Visual implements IVisual {
         }
 
         let yearValuesUnique = [...new Set(yearValues)];
-        let dt;
+        let dt: ColumnTable;
 
         if (yearValuesUnique.length == 1) {
 
@@ -210,7 +211,7 @@ export class Visual implements IVisual {
                 "x": xValues,
                 "y": yValues
             })
-                .impute({ x: () => 0, y: () => 0 })
+                .impute({ x: () => 0, y: () => 0 });
 
         } else {
 
@@ -220,25 +221,21 @@ export class Visual implements IVisual {
                 "operation": operationValues,
                 "x": xValues,
                 "y": yValues
-            });
-
-            let minYear = aq.agg(dt, d => aq.op.min(d.year));
-            let maxYear = aq.agg(dt, d => aq.op.max(d.year));
-
-            dt = dt.params({ minYear: minYear, maxYear: maxYear })
-                .filter((d, $) => d.year == $.minYear || d.year == $.maxYear)
-                .impute({ x: () => 0, y: () => 0 })
+            })
+                .filter(d => d.year == aq.op.min(d.year) || d.year == aq.op.max(d.year))
                 .groupby("region", "operation")
                 .pivot("year", ["x", "y"])
+                .rename(aq.names("region", "operation", "xOld", "xNew", "yOld", "yNew") as Select)
+                .impute({ xOld: () => 0, xNew: () => 0, yOld: () => 0, yNew: () => 0 })
                 .derive({
-                    x: (d, $) => d[`x_${$.maxYear}`] - d[`x_${$.minYear}`],
-                    y: (d, $) => d[`y_${$.maxYear}`] - d[`y_${$.minYear}`]
+                    x: d => d.xNew - d.xOld,
+                    y: d => d.yNew - d.yOld
                 })
                 .select("region", "operation", "x", "y");
 
-        }
+            return dt;
 
-        return dt;
+        }
 
     }
 
