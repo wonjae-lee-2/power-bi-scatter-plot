@@ -38,89 +38,6 @@ type Selection<T1, T2 = T1> = d3.Selection<any, T1, any, T2>;
 import * as aq from "arquero";
 import ColumnTable from "arquero/dist/types/table/column-table";
 
-function addDropdownOptions(options: VisualUpdateOptions, selectId: string) {
-
-    let select: HTMLSelectElement = document.getElementById(selectId) as HTMLSelectElement;
-    let optionValue = select.value;
-    let dataViews = options.dataViews;
-
-    while (select.firstChild) {
-        select.removeChild(select.firstChild);
-    }
-
-    if (selectId == "regionSelect") {
-
-        let option = document.createElement("option");
-        option.value = "";
-        option.text = "--Select a region to highlight--";
-        select.add(option);
-
-        let regions = dataViews[0].categorical.categories[1].values;
-        let regionsUniqueAsc = [...new Set(regions)].sort(d3.ascending);
-
-        for (let i = 0; i < regionsUniqueAsc.length; i++) {
-
-            let option = document.createElement("option");
-            option.value = regionsUniqueAsc[i].valueOf() as string;
-            option.text = regionsUniqueAsc[i].valueOf() as string;
-            select.add(option);
-
-            if (option.value == optionValue) {
-                select.value = option.value;
-            }
-
-        }
-
-    } else if (selectId == "operationSelect") {
-
-        let option = document.createElement("option");
-        option.value = "";
-        option.text = "--Select an operation to highlight--";
-        select.add(option);
-
-        let operations = dataViews[0].categorical.categories[2].values;
-        let operationsUniqueAsc = [...new Set(operations)].sort(d3.ascending);
-
-        for (let i = 0; i < operationsUniqueAsc.length; i++) {
-
-            let option = document.createElement("option");
-            option.value = operationsUniqueAsc[i].valueOf() as string;
-            option.text = operationsUniqueAsc[i].valueOf() as string;
-            select.add(option);
-
-            if (option.value == optionValue) {
-                select.value = option.value;
-            }
-
-        }
-
-    } else if (selectId == "xSelect" || selectId == "ySelect") {
-
-        let values = dataViews[0].categorical.values;
-        let displayNames = [];
-
-        for (let i = 0; i < values.length; i++) {
-            displayNames.push(values[i].source.displayName);
-        }
-
-        displayNames.sort(d3.ascending);
-        for (let i = 0; i < displayNames.length; i++) {
-
-            let option = document.createElement("option");
-            option.value = displayNames[i];
-            option.text = displayNames[i];
-            select.add(option);
-
-            if (option.value == optionValue) {
-                select.value = option.value;
-            }
-
-        }
-
-    }
-
-}
-
 export class Visual implements IVisual {
 
     private target: HTMLElement;
@@ -154,6 +71,102 @@ export class Visual implements IVisual {
         this.target.appendChild(label);
 
         return select;
+
+    }
+
+    private addDropdownOptions(options: VisualUpdateOptions, element: HTMLSelectElement) {
+
+        let optionValue = element.value;
+        let dataViews = options.dataViews;
+
+        while (element.firstChild) {
+            element.removeChild(element.firstChild);
+        }
+
+        switch (element) {
+
+            case this.regionSelect: {
+
+                let option = document.createElement("option");
+                option.value = "";
+                option.text = "--Select a region to highlight--";
+                element.add(option);
+
+                let regions = dataViews[0].categorical.categories[1].values;
+                let regionsUniqueAsc = [...new Set(regions)].sort(d3.ascending);
+
+                for (let i = 0; i < regionsUniqueAsc.length; i++) {
+
+                    let option = document.createElement("option");
+                    option.value = regionsUniqueAsc[i].valueOf() as string;
+                    option.text = regionsUniqueAsc[i].valueOf() as string;
+                    element.add(option);
+
+                    if (option.value == optionValue) {
+                        element.value = option.value;
+                    }
+
+                }
+
+                break;
+
+            }
+
+            case this.operationSelect: {
+
+                let option = document.createElement("option");
+                option.value = "";
+                option.text = "--Select an operation to highlight--";
+                element.add(option);
+
+                let operations = dataViews[0].categorical.categories[2].values;
+                let operationsUniqueAsc = [...new Set(operations)].sort(d3.ascending);
+
+                for (let i = 0; i < operationsUniqueAsc.length; i++) {
+
+                    let option = document.createElement("option");
+                    option.value = operationsUniqueAsc[i].valueOf() as string;
+                    option.text = operationsUniqueAsc[i].valueOf() as string;
+                    element.add(option);
+
+                    if (option.value == optionValue) {
+                        element.value = option.value;
+                    }
+
+                }
+
+                break;
+
+            }
+
+            default: {
+
+                let values = dataViews[0].categorical.values;
+                let displayNames = [];
+
+                for (let i = 0; i < values.length; i++) {
+                    displayNames.push(values[i].source.displayName);
+                }
+
+                displayNames.sort(d3.ascending);
+                for (let i = 0; i < displayNames.length; i++) {
+
+                    let option = document.createElement("option");
+                    option.value = displayNames[i];
+                    option.text = displayNames[i];
+                    element.add(option);
+
+                    if (option.value == optionValue) {
+                        element.value = option.value;
+                    }
+
+                }
+
+                break;
+
+            }
+
+        }
 
     }
 
@@ -225,10 +238,10 @@ export class Visual implements IVisual {
 
     private drawChart(options: VisualUpdateOptions) {
 
-        addDropdownOptions(options, "regionSelect");
-        addDropdownOptions(options, "operationSelect");
-        addDropdownOptions(options, "xSelect");
-        addDropdownOptions(options, "ySelect");
+        this.addDropdownOptions(options, this.regionSelect);
+        this.addDropdownOptions(options, this.operationSelect);
+        this.addDropdownOptions(options, this.xSelect);
+        this.addDropdownOptions(options, this.ySelect);
 
         let width: number = options.viewport.width;
         let height: number = options.viewport.height;
@@ -245,6 +258,8 @@ export class Visual implements IVisual {
         let dataOperation = data.getter("operation");
         let dataX = data.getter("x");
         let dataY = data.getter("y");
+        let indicesHighlightRegion = d3.filter(indices, d => dataRegion(d) == this.regionSelect.value);
+        let indicesHighlightOperation = d3.filter(indices, d => dataOperation(d) == this.operationSelect.value);
         let xLabel: string = this.xSelect.value;
         let yLabel: string = this.ySelect.value;
         let [domains] = data
@@ -419,26 +434,23 @@ export class Visual implements IVisual {
 
         this.highlightRegion
             .selectAll("path")
-            .data(indices)
+            .data(indicesHighlightRegion)
             .join("path")
-            .filter(d => dataRegion(d) == this.regionSelect.value)
             .attr("stroke", "#4e79a7")
             .attr("stroke-linecap", "round")
             .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`);
 
         this.highlightOperation
             .selectAll("path")
-            .data(indices)
+            .data(indicesHighlightOperation)
             .join("path")
-            .filter(d => dataOperation(d) == this.operationSelect.value)
             .attr("stroke", "#e15759")
             .attr("stroke-linecap", "round")
             .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`);
         this.highlightOperation
             .selectAll("text")
-            .data(indices)
+            .data(indicesHighlightOperation)
             .join("text")
-            .filter(d => dataOperation(d) == this.operationSelect.value)
             .attr("color", "black")
             .attr("stroke-width", 0)
             .attr("font-weight", "600")
