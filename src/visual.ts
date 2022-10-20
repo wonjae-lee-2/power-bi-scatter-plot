@@ -36,6 +36,7 @@ import * as d3 from "d3";
 type Selection<T1, T2 = T1> = d3.Selection<any, T1, any, T2>;
 
 import * as aq from "arquero";
+import ColumnTable from "arquero/dist/types/table/column-table";
 
 function addDropdownOptions(options: VisualUpdateOptions, selectId: string) {
 
@@ -120,241 +121,14 @@ function addDropdownOptions(options: VisualUpdateOptions, selectId: string) {
 
 }
 
-interface ChartViewModel {
-    dataPoints: ChartDataPoint[];
-    highlightRegion: ChartDataPoint[];
-    highlightOperation: ChartDataPoint[];
-    xLabel: string;
-    yLabel: string;
-}
-
-interface ChartDataPoint {
-    region: string;
-    operation: string;
-    x: number;
-    y: number;
-}
-
-function updateOperationDropdown(chartDataPoints: ChartDataPoint[]) {
-
-    let select: HTMLSelectElement = document.getElementById("operationSelect") as HTMLSelectElement;
-    let optionValue = select.value;
-
-    while (select.firstChild) {
-        select.removeChild(select.firstChild);
-    }
-
-    let option = document.createElement("option");
-    option.value = "";
-    option.text = "--Select an operation to highlight--";
-    select.add(option);
-
-    let operationOptions = [];
-
-    for (let i = 0; i < chartDataPoints.length; i++) {
-        operationOptions.push(chartDataPoints[i].operation);
-    }
-
-    let operationOptionsUniqueAsc = [...new Set(operationOptions)].sort(d3.ascending);
-
-    for (let i = 0; i < operationOptionsUniqueAsc.length; i++) {
-
-        let option = document.createElement("option");
-        option.value = operationOptionsUniqueAsc[i].valueOf() as string;
-        option.text = operationOptionsUniqueAsc[i].valueOf() as string;
-        select.add(option);
-
-        if (option.value == optionValue) {
-            select.value = option.value;
-        }
-
-    }
-
-}
-
-function transformData(options: VisualUpdateOptions): ChartViewModel {
-
-    let dataViews = options.dataViews;
-    let yearValues = dataViews[0].categorical.categories[0].values;
-    let regionValues = dataViews[0].categorical.categories[1].values;
-    let operationValues = dataViews[0].categorical.categories[2].values;
-    let measures = dataViews[0].categorical.values;
-
-    let regionSelect: HTMLSelectElement = document.getElementById("regionSelect") as HTMLSelectElement;
-    let regionOption = regionSelect.value;
-    let operationSelect: HTMLSelectElement = document.getElementById("operationSelect") as HTMLSelectElement;
-    let operationOption = operationSelect.value;
-    let xSelect: HTMLSelectElement = document.getElementById("xSelect") as HTMLSelectElement;
-    let xOption = xSelect.value;
-    let xValues = [];
-    let ySelect: HTMLSelectElement = document.getElementById("ySelect") as HTMLSelectElement;
-    let yOption = ySelect.value;
-    let yValues = [];
-
-    let chartDataPoints: ChartDataPoint[] = [];
-    let chartHighlightRegion: ChartDataPoint[] = [];
-    let chartHighlightOperation: ChartDataPoint[] = [];
-
-    for (let i = 0; i < measures.length; i++) {
-
-        if (measures[i].source.displayName == xOption) {
-            xValues = measures[i].values;
-        }
-
-        if (measures[i].source.displayName == yOption) {
-            yValues = measures[i].values;
-        }
-
-    }
-
-    let yearValuesUnique = [...new Set(yearValues)];
-
-    if (yearValuesUnique.length == 1) {
-
-        let dt = aq.table({
-            "region": regionValues,
-            "operation": operationValues,
-            "x": xValues,
-            "y": yValues
-        })
-
-        let aqData = dt
-            .impute({ x: () => 0 })
-            .impute({ y: () => 0 })
-            .filter(d => d.x !== 0 || d.y !== 0)
-
-        let aqObjects = aqData.objects();
-
-        aqObjects.forEach(element => {
-
-            let region = element["region"].valueOf() as string;
-            let operation = element["operation"].valueOf() as string;
-            let x = element["x"].valueOf() as number;
-            let y = element["y"].valueOf() as number;
-
-            chartDataPoints.push({
-                region,
-                operation,
-                x,
-                y
-            });
-
-            if (region == regionOption) {
-                chartHighlightRegion.push({
-                    region,
-                    operation,
-                    x,
-                    y
-                })
-
-            }
-
-            if (operation == operationOption) {
-                chartHighlightOperation.push({
-                    region,
-                    operation,
-                    x,
-                    y
-                })
-
-            }
-
-        });
-
-        updateOperationDropdown(chartDataPoints);
-
-        return {
-            dataPoints: chartDataPoints,
-            highlightRegion: chartHighlightRegion,
-            highlightOperation: chartHighlightOperation,
-            xLabel: xOption,
-            yLabel: yOption,
-        };
-
-    } else {
-
-        let dt = aq.table({
-            "year": yearValues,
-            "region": regionValues,
-            "operation": operationValues,
-            "x": xValues,
-            "y": yValues
-        });
-
-        let minYear = aq.agg(dt, d => aq.op.min(d.year));
-        let maxYear = aq.agg(dt, d => aq.op.max(d.year));
-
-        let aqData = dt.params({ minYear: minYear, maxYear: maxYear })
-            .filter((d, $) => d.year == $.minYear || d.year == $.maxYear)
-            .impute({ x: () => 0 })
-            .impute({ y: () => 0 })
-            .groupby("region", "operation")
-            .pivot("year", ["x", "y"])
-            .filter((d, $) => d[`x_${$.minYear}`] !== 0 || d[`x_${$.maxYear}`] !== 0 || d[`y_${$.minYear}`] !== 0 || d[`y_${$.maxYear}`] !== 0)
-            .derive({ x: (d, $) => d[`x_${$.maxYear}`] - d[`x_${$.minYear}`] })
-            .derive({ y: (d, $) => d[`y_${$.maxYear}`] - d[`y_${$.minYear}`] })
-            .select("region", "operation", "x", "y");
-
-        let aqObjects = aqData.objects();
-
-        aqObjects.forEach(element => {
-
-            let region = element["region"].valueOf() as string;
-            let operation = element["operation"].valueOf() as string;
-            let x = element["x"].valueOf() as number;
-            let y = element["y"].valueOf() as number;
-
-            chartDataPoints.push({
-                region,
-                operation,
-                x,
-                y
-            });
-
-            if (region == regionOption) {
-                chartHighlightRegion.push({
-                    region,
-                    operation,
-                    x,
-                    y
-                })
-
-            }
-
-            if (operation == operationOption) {
-                chartHighlightOperation.push({
-                    region,
-                    operation,
-                    x,
-                    y
-                })
-
-            }
-
-        });
-
-        updateOperationDropdown(chartDataPoints);
-
-        return {
-            dataPoints: chartDataPoints,
-            highlightRegion: chartHighlightRegion,
-            highlightOperation: chartHighlightOperation,
-            xLabel: xOption,
-            yLabel: yOption,
-        };
-
-    }
-
-}
-
 export class Visual implements IVisual {
 
     private target: HTMLElement;
     private button: HTMLElement;
-    private regionSelect: HTMLElement;
-    private operationSelect: HTMLElement;
-    private xSelect: HTMLElement;
-    private ySelect: HTMLElement;
+    private regionSelect: HTMLSelectElement;
+    private operationSelect: HTMLSelectElement;
+    private xSelect: HTMLSelectElement;
+    private ySelect: HTMLSelectElement;
 
     private svg: Selection<any>;
     private chart: Selection<SVGElement>;
@@ -383,6 +157,72 @@ export class Visual implements IVisual {
 
     }
 
+    private transformData(options: VisualUpdateOptions): ColumnTable {
+
+        let dataViews = options.dataViews;
+        let yearValues = dataViews[0].categorical.categories[0].values;
+        let regionValues = dataViews[0].categorical.categories[1].values;
+        let operationValues = dataViews[0].categorical.categories[2].values;
+        let measures = dataViews[0].categorical.values;
+
+        let xValues = [];
+        let yValues = [];
+
+        for (let i = 0; i < measures.length; i++) {
+
+            if (measures[i].source.displayName == this.xSelect.value) {
+                xValues = measures[i].values;
+            }
+
+            if (measures[i].source.displayName == this.ySelect.value) {
+                yValues = measures[i].values;
+            }
+
+        }
+
+        let yearValuesUnique = [...new Set(yearValues)];
+        let dt;
+
+        if (yearValuesUnique.length == 1) {
+
+            dt = aq.table({
+                "region": regionValues,
+                "operation": operationValues,
+                "x": xValues,
+                "y": yValues
+            })
+                .impute({ x: () => 0, y: () => 0 })
+
+        } else {
+
+            dt = aq.table({
+                "year": yearValues,
+                "region": regionValues,
+                "operation": operationValues,
+                "x": xValues,
+                "y": yValues
+            });
+
+            let minYear = aq.agg(dt, d => aq.op.min(d.year));
+            let maxYear = aq.agg(dt, d => aq.op.max(d.year));
+
+            dt = dt.params({ minYear: minYear, maxYear: maxYear })
+                .filter((d, $) => d.year == $.minYear || d.year == $.maxYear)
+                .impute({ x: () => 0, y: () => 0 })
+                .groupby("region", "operation")
+                .pivot("year", ["x", "y"])
+                .derive({
+                    x: (d, $) => d[`x_${$.maxYear}`] - d[`x_${$.minYear}`],
+                    y: (d, $) => d[`y_${$.maxYear}`] - d[`y_${$.minYear}`]
+                })
+                .select("region", "operation", "x", "y");
+
+        }
+
+        return dt;
+
+    }
+
     private drawChart(options: VisualUpdateOptions) {
 
         addDropdownOptions(options, "regionSelect");
@@ -399,18 +239,28 @@ export class Visual implements IVisual {
         let xRange = [marginLeft, width - marginRight];
         let yRange = [height - marginBottom, marginTop];
 
-        let viewModel: ChartViewModel = transformData(options);
-        let data = viewModel.dataPoints;
-        let highlightRegionData = viewModel.highlightRegion;
-        let highlightOperationData = viewModel.highlightOperation;
-        let xLabel: string = viewModel.xLabel;
-        let yLabel: string = viewModel.yLabel;
-        let xDomain = d3.extent(data, d => d.x);
-        let yDomain = d3.extent(data, d => d.y);
-        let xScale = d3.scaleLinear(xDomain, xRange);
-        let yScale = d3.scaleLinear(yDomain, yRange);
-        let xMean = [d3.mean(data, d => d.x)];
-        let yMean = [d3.mean(data, d => d.y)];
+        let data = this.transformData(options);
+        let indices = d3.range(0, data.numRows());
+        let dataRegion = data.getter("region");
+        let dataOperation = data.getter("operation");
+        let dataX = data.getter("x");
+        let dataY = data.getter("y");
+        let xLabel: string = this.xSelect.value;
+        let yLabel: string = this.ySelect.value;
+        let [domains] = data
+            .rollup({
+                x: d => [aq.op.min(d.x), aq.op.max(d.x)],
+                y: d => [aq.op.min(d.y), aq.op.max(d.y)]
+            });
+        let xScale = d3.scaleLinear(domains["x"], xRange);
+        let yScale = d3.scaleLinear(domains["y"], yRange);
+        let [means] = data
+            .rollup({
+                x: d => aq.op.mean(d.x),
+                y: d => aq.op.mean(d.y)
+            });
+        let xMean = [means["x"]];
+        let yMean = [means["y"]];
 
         let xAxisFunction = (xScale) => d3.axisBottom(xScale).ticks(5, "~s");
         let yAxisFunction = (yScale) => d3.axisLeft(yScale).ticks(5, "~s");
@@ -549,9 +399,9 @@ export class Visual implements IVisual {
             .attr("stroke-linecap", "round")
             .attr("opacity", 0.2)
             .selectAll("path")
-            .data(data)
+            .data(indices)
             .join("path")
-            .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
+            .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`);
 
         this.dataLabel
             .attr("color", "black")
@@ -559,41 +409,44 @@ export class Visual implements IVisual {
             .attr("font-weight", "600")
             .attr("opacity", 0.2)
             .selectAll("text")
-            .data(data)
+            .data(indices)
             .join("text")
             .attr("dx", "0.5em")
             .attr("dy", "0.5em")
-            .attr("x", d => xScale(d.x))
-            .attr("y", d => yScale(d.y))
-            .text(d => d.operation);
+            .attr("x", d => xScale(dataX(d)))
+            .attr("y", d => yScale(dataY(d)))
+            .text(d => dataOperation(d));
 
         this.highlightRegion
             .selectAll("path")
-            .data(highlightRegionData)
+            .data(indices)
             .join("path")
+            .filter(d => dataRegion(d) == this.regionSelect.value)
             .attr("stroke", "#4e79a7")
             .attr("stroke-linecap", "round")
-            .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
+            .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`);
 
         this.highlightOperation
             .selectAll("path")
-            .data(highlightOperationData)
+            .data(indices)
             .join("path")
+            .filter(d => dataOperation(d) == this.operationSelect.value)
             .attr("stroke", "#e15759")
             .attr("stroke-linecap", "round")
-            .attr("d", d => `M ${xScale(d.x)} ${yScale(d.y)} h 0`);
+            .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`);
         this.highlightOperation
             .selectAll("text")
-            .data(highlightOperationData)
+            .data(indices)
             .join("text")
+            .filter(d => dataOperation(d) == this.operationSelect.value)
             .attr("color", "black")
             .attr("stroke-width", 0)
             .attr("font-weight", "600")
             .attr("dx", "0.5em")
             .attr("dy", "0.5em")
-            .attr("x", d => xScale(d.x))
-            .attr("y", d => yScale(d.y))
-            .text(d => d.operation);
+            .attr("x", d => xScale(dataX(d)))
+            .attr("y", d => yScale(dataY(d)))
+            .text(d => dataOperation(d));
 
         this.svg
             .call(zoom)
@@ -661,27 +514,19 @@ export class Visual implements IVisual {
         this.drawChart(options);
 
         this.regionSelect.onchange = () => {
-
             this.drawChart(options);
-
         }
 
         this.operationSelect.onchange = () => {
-
             this.drawChart(options);
-
         }
 
         this.xSelect.onchange = () => {
-
             this.drawChart(options);
-
         }
 
         this.ySelect.onchange = () => {
-
             this.drawChart(options);
-
         }
 
     }
