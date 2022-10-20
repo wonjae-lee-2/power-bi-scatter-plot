@@ -48,14 +48,15 @@ export class Visual implements IVisual {
     private ySelect: HTMLSelectElement;
 
     private svg: Selection<any>;
-    private chart: Selection<SVGElement>;
-    private highlightRegion: Selection<SVGElement>;
-    private highlightOperation: Selection<SVGElement>;
-    private dataLabel: Selection<SVGElement>;
+    private grid: Selection<SVGElement>;
     private averageLines: Selection<SVGElement>;
     private xAxis: Selection<SVGElement>;
     private yAxis: Selection<SVGElement>;
-    private grid: Selection<SVGElement>;
+    private chart: Selection<SVGElement>;
+    private label: Selection<SVGElement>;
+    private chartHighlightRegion: Selection<SVGElement>;
+    private chartHighlightOperation: Selection<SVGElement>;
+    private labelHighlightOperation: Selection<SVGElement>;
 
     private appendDropdown(labelText: string, labelPositionTop: string, labelPositionLeft: string, selectId: string) {
 
@@ -246,11 +247,14 @@ export class Visual implements IVisual {
         let width: number = options.viewport.width;
         let height: number = options.viewport.height;
         let marginLeft = 40;
-        let marginRight = 80;
+        let marginRight = 40;
         let marginTop = 120;
         let marginBottom = 20;
-        let xRange = [marginLeft, width - marginRight];
-        let yRange = [height - marginBottom, marginTop];
+        let paddingLeft = 30;
+        let paddingRight = 30;
+        let paddingBottom = 15;
+        let xRange = [marginLeft + paddingLeft, width - marginRight - paddingRight];
+        let yRange = [height - marginBottom - paddingBottom, marginTop];
 
         let data = this.transformData(options);
         let indices = d3.range(0, data.numRows());
@@ -341,57 +345,75 @@ export class Visual implements IVisual {
                 .call(xGrid, xScaleZoomed)
                 .call(yGrid, yScaleZoomed);
 
+            this.averageLines
+                .call(xAverageLine, xScaleZoomed)
+                .call(yAverageLine, yScaleZoomed);
+
             this.xAxis
                 .attr("transform", `translate(0, ${height - marginBottom})`)
                 .call(xAxisFunction(xScaleZoomed))
-                .call(g => g.selectAll(".domain, .xlabel").remove())
+                .call(g => g.selectAll(".domain, .xLabel").remove())
                 .call(g => g.append("text")
                     .attr("x", width - (marginRight / 4))
                     .attr("y", marginBottom / 4)
-                    .attr("fill", "black")
-                    .attr("font-weight", "600")
-                    .attr("text-anchor", "end")
                     .text(xLabel)
-                    .classed("xlabel", true)
+                    .classed("xLabel", true)
                 );
 
             this.yAxis
                 .attr("transform", `translate(${marginLeft}, 0)`)
                 .call(yAxisFunction(yScaleZoomed))
-                .call(g => g.selectAll(".domain, .ylabel").remove())
+                .call(g => g.selectAll(".domain, .yLabel").remove())
                 .call(g => g.append("text")
                     .attr("x", -marginLeft * (3 / 4))
                     .attr("y", marginTop / 2)
-                    .attr("fill", "black")
-                    .attr("font-weight", "600")
-                    .attr("text-anchor", "start")
                     .text(yLabel)
-                    .classed("ylabel", true)
+                    .classed("yLabel", true)
                 );
 
-            this.averageLines
-                .call(xAverageLine, xScaleZoomed)
-                .call(yAverageLine, yScaleZoomed);
-
             this.chart
+                .selectAll("path")
+                .data(indices)
+                .join("path")
+                .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`)
                 .attr("transform", transform)
                 .attr("stroke-width", 5 / transform.k);
 
-            this.dataLabel
+            this.label
+                .selectAll("text")
+                .data(indices)
+                .join("text")
+                .text(d => dataOperation(d))
+                .attr("x", d => xScale(dataX(d)))
+                .attr("y", d => yScale(dataY(d)))
+                .attr("dy", "1.1em")
                 .attr("transform", transform)
                 .attr("font-size", 14 / transform.k);
 
-            this.highlightRegion
+            this.chartHighlightRegion
                 .selectAll("path")
+                .data(indicesHighlightRegion)
+                .join("path")
+                .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`)
                 .attr("transform", transform)
                 .attr("stroke-width", 10 / transform.k);
 
-            this.highlightOperation
+            this.chartHighlightOperation
                 .selectAll("path")
+                .data(indicesHighlightOperation)
+                .join("path")
+                .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`)
                 .attr("transform", transform)
                 .attr("stroke-width", 10 / transform.k);
-            this.highlightOperation
+
+            this.labelHighlightOperation
                 .selectAll("text")
+                .data(indicesHighlightOperation)
+                .join("text")
+                .text(d => dataOperation(d))
+                .attr("x", d => xScale(dataX(d)))
+                .attr("y", d => yScale(dataY(d)))
+                .attr("dy", "1.1em")
                 .attr("transform", transform)
                 .attr("font-size", 14 / transform.k);
 
@@ -399,66 +421,6 @@ export class Visual implements IVisual {
 
         this.svg.
             attr("viewBox", [0, 0, width, height]);
-
-        this.grid
-            .attr("stroke", "black")
-            .attr("stroke-opacity", 0.1);
-
-        this.averageLines
-            .attr("stroke", "#76b7b2")
-            .attr("stroke-width", "2")
-            .attr("stroke-dasharray", "4 2");
-
-        this.chart
-            .attr("stroke", "black")
-            .attr("stroke-linecap", "round")
-            .attr("opacity", 0.2)
-            .selectAll("path")
-            .data(indices)
-            .join("path")
-            .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`);
-
-        this.dataLabel
-            .attr("color", "black")
-            .attr("stroke-width", 0)
-            .attr("font-weight", "600")
-            .attr("opacity", 0.2)
-            .selectAll("text")
-            .data(indices)
-            .join("text")
-            .attr("dx", "0.5em")
-            .attr("dy", "0.5em")
-            .attr("x", d => xScale(dataX(d)))
-            .attr("y", d => yScale(dataY(d)))
-            .text(d => dataOperation(d));
-
-        this.highlightRegion
-            .selectAll("path")
-            .data(indicesHighlightRegion)
-            .join("path")
-            .attr("stroke", "#4e79a7")
-            .attr("stroke-linecap", "round")
-            .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`);
-
-        this.highlightOperation
-            .selectAll("path")
-            .data(indicesHighlightOperation)
-            .join("path")
-            .attr("stroke", "#e15759")
-            .attr("stroke-linecap", "round")
-            .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`);
-        this.highlightOperation
-            .selectAll("text")
-            .data(indicesHighlightOperation)
-            .join("text")
-            .attr("color", "black")
-            .attr("stroke-width", 0)
-            .attr("font-weight", "600")
-            .attr("dx", "0.5em")
-            .attr("dy", "0.5em")
-            .attr("x", d => xScale(dataX(d)))
-            .attr("y", d => yScale(dataY(d)))
-            .text(d => dataOperation(d));
 
         this.svg
             .call(zoom)
@@ -494,18 +456,9 @@ export class Visual implements IVisual {
         this.svg = d3.select(options.element)
             .append("svg")
             .classed("svg", true);
-        this.chart = this.svg
+        this.grid = this.svg
             .append("g")
-            .classed("chart", true);
-        this.highlightRegion = this.svg
-            .append("g")
-            .classed("highlightRegion", true);
-        this.highlightOperation = this.svg
-            .append("g")
-            .classed("highlightOperation", true);
-        this.dataLabel = this.svg
-            .append("g")
-            .classed("dataLabel", true);
+            .classed("grid", true);
         this.averageLines = this.svg
             .append("g")
             .classed("averageLines", true);
@@ -515,9 +468,21 @@ export class Visual implements IVisual {
         this.yAxis = this.svg
             .append("g")
             .classed("yAxis", true);
-        this.grid = this.svg
+        this.chart = this.svg
             .append("g")
-            .classed("grid", true);
+            .classed("chart", true);
+        this.label = this.svg
+            .append("g")
+            .classed("label", true);
+        this.chartHighlightRegion = this.svg
+            .append("g")
+            .classed("chartHighlightRegion", true);
+        this.chartHighlightOperation = this.svg
+            .append("g")
+            .classed("chartHighlightOperation", true);
+        this.labelHighlightOperation = this.svg
+            .append("g")
+            .classed("labelHighlightOperation", true);
 
     }
 
