@@ -142,6 +142,11 @@ export class Visual implements IVisual {
 
             default: {
 
+                let option = document.createElement("option");
+                option.value = "";
+                option.text = "--Select a measure to plot--";
+                element.add(option);
+
                 let values = dataViews[0].categorical.values;
                 let displayNames = [];
 
@@ -271,8 +276,18 @@ export class Visual implements IVisual {
                 x: d => [aq.op.min(d.x), aq.op.max(d.x)],
                 y: d => [aq.op.min(d.y), aq.op.max(d.y)]
             });
-        let xScale = d3.scaleLinear(domains["x"], xRange);
-        let yScale = d3.scaleLinear(domains["y"], yRange);
+        let xScale;
+        if (domains["x"][0] == 0 && domains["x"][1] == 0) {
+            xScale = d3.scaleLinear([-1, 1], xRange);
+        } else {
+            xScale = d3.scaleLinear(domains["x"], xRange);
+        }
+        let yScale;
+        if (domains["y"][0] == 0 && domains["y"][1] == 0) {
+            yScale = d3.scaleLinear([-1, 1], yRange);
+        } else {
+            yScale = d3.scaleLinear(domains["y"], yRange);
+        }
         let [means] = data
             .rollup({
                 x: d => aq.op.mean(d.x),
