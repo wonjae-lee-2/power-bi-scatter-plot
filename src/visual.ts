@@ -56,11 +56,14 @@ export class Visual implements IVisual {
     private regressionLine: Selection<SVGElement>;
     private xAxis: Selection<SVGElement>;
     private yAxis: Selection<SVGElement>;
+    private chartArea: Selection<SVGElement>;
     private chart: Selection<SVGElement>;
     private label: Selection<SVGElement>;
+    private chartOutlier: Selection<SVGElement>;
     private chartHighlightRegion: Selection<SVGElement>;
     private chartHighlightOperation: Selection<SVGElement>;
     private labelHighlightOperation: Selection<SVGElement>;
+    private tooltip: d3.Selection<HTMLElement, unknown, null, undefined>;
 
     private appendDropdown(labelText: string, labelPositionTop: string, labelPositionLeft: string, selectId: string) {
 
@@ -226,7 +229,11 @@ export class Visual implements IVisual {
                     lower: d => d.yhat - aq.op.stdevp(d.resid),
                     upper: d => d.yhat + aq.op.stdevp(d.resid)
                 })
-                .select("region", "operation", "x", "y", "yhat", "lower", "upper")
+                .derive({
+                    lower2: d => d.yhat - (2 * aq.op.stdevp(d.resid)),
+                    upper2: d => d.yhat + (2 * aq.op.stdevp(d.resid))
+                })
+                .select("region", "operation", "x", "y", "yhat", "lower", "upper", "lower2", "upper2")
                 .orderby("x");
 
         } else {
@@ -258,7 +265,11 @@ export class Visual implements IVisual {
                     lower: d => d.yhat - aq.op.stdevp(d.resid),
                     upper: d => d.yhat + aq.op.stdevp(d.resid)
                 })
-                .select("region", "operation", "x", "y", "yhat", "lower", "upper")
+                .derive({
+                    lower2: d => d.yhat - (2 * aq.op.stdevp(d.resid)),
+                    upper2: d => d.yhat + (2 * aq.op.stdevp(d.resid))
+                })
+                .select("region", "operation", "x", "y", "yhat", "lower", "upper", "lower2", "upper2")
                 .orderby("x");
 
         }
@@ -295,10 +306,10 @@ export class Visual implements IVisual {
         let dataYhat = data.getter("yhat");
         let dataLower = data.getter("lower");
         let dataUpper = data.getter("upper");
-        let indicesRegression = [
-            d3.filter(indices, d => dataX(d) == aq.agg(data, aq.op.min("x")))[0],
-            d3.filter(indices, d => dataX(d) == aq.agg(data, aq.op.max("x")))[0]
-        ]
+        let dataLower2 = data.getter("lower2");
+        let dataUpper2 = data.getter("upper2");
+        let indicesRegression = [0, data.numRows() - 1];
+        let indicesChartOutlier = d3.filter(indices, d => dataY(d) < dataLower2(d) || dataUpper2(d) < dataY(d));
         let indicesHighlightRegion = d3.filter(indices, d => dataRegion(d) == this.regionSelect.value);
         let indicesHighlightOperation = d3.filter(indices, d => dataOperation(d) == this.operationSelect.value);
 
@@ -333,7 +344,7 @@ export class Visual implements IVisual {
         let yAxisFunction = (yScale) => d3.axisLeft(yScale).ticks(5, "~s");
         let xGrid = (g, xScale) => g
             .selectAll(".xGrid")
-            .data(xScale.ticks(5))
+            .data(xScale.ticks(8))
             .join(
                 enter => enter.append("line")
                     .attr("y1", marginTop / 2)
@@ -346,7 +357,7 @@ export class Visual implements IVisual {
             .attr("x2", d => xScale(d));
         let yGrid = (g, yScale) => g
             .selectAll(".yGrid")
-            .data(yScale.ticks(5))
+            .data(yScale.ticks(4))
             .join(
                 enter => enter.append("line")
                     .attr("x1", marginLeft / 2)
@@ -357,17 +368,66 @@ export class Visual implements IVisual {
             )
             .attr("y1", d => yScale(d))
             .attr("y2", d => yScale(d));
-        let area = d3.area<any>()
-            .curve(d3.curveLinear)
-            .x(d => xScale(dataX(d)))
-            .y0(d => yScale(dataLower(d)))
-            .y1(d => yScale(dataUpper(d)))
 
         let zoom = d3.zoom().scaleExtent([0, Infinity]).on("zoom", (event) => {
 
             let transform = event.transform;
             let xScaleZoomed = transform.rescaleX(xScale);
             let yScaleZoomed = transform.rescaleY(yScale);
+
+            let area = d3.area<number>()
+                .curve(d3.curveLinear)
+                .x(d => xScale(dataX(d)))
+                .y0(d => yScale(dataLower(d)))
+                .y1(d => yScale(dataUpper(d)))
+
+            let formatNumber = d3.format(",.2f")
+            let pointerEntered = (d) => {
+
+                this.tooltip
+                    .append("div")
+                    .append("b")
+                    .text(`${dataOperation(d)}`);
+                if (dataX(d) !== 0) {
+                    this.tooltip
+                        .append("div")
+                        .text(`${xLabel}: ${formatNumber(dataX(d))}`);
+                }
+                if (dataY(d) !== 0) {
+                    this.tooltip
+                        .append("div")
+                        .text(`${yLabel}: ${formatNumber(dataY(d))}`);
+                }
+                this.tooltip.style("visibility", "visible");
+
+            }
+            let pointerMoved = (d) => {
+
+                let tooltipWidth = this.tooltip.property("offsetWidth");
+                let tooltipHeight = this.tooltip.property("offsetHeight");
+                if (xScaleZoomed(dataX(d)) - (tooltipWidth / 2) < 0) {
+                    this.tooltip
+                        .style("left", `${xScaleZoomed(dataX(d))}px`)
+                        .style("top", `${yScaleZoomed(dataY(d)) - (tooltipHeight * 1.1)}px`);
+                } else if (xScaleZoomed(dataX(d)) + (tooltipWidth / 2) > width) {
+                    this.tooltip
+                        .style("left", `${xScaleZoomed(dataX(d)) - tooltipWidth}px`)
+                        .style("top", `${yScaleZoomed(dataY(d)) - (tooltipHeight * 1.1)}px`);
+                } else {
+                    this.tooltip
+                        .style("left", `${xScaleZoomed(dataX(d)) - (tooltipWidth / 2)}px`)
+                        .style("top", `${yScaleZoomed(dataY(d)) - (tooltipHeight * 1.1)}px`);
+                }
+
+            }
+            let pointerLeft = () => {
+
+                this.tooltip.style("visibility", "hidden");
+                this.tooltip
+                    .selectChildren()
+                    .remove();
+
+            }
 
             this.grid
                 .call(xGrid, xScaleZoomed)
@@ -416,7 +476,10 @@ export class Visual implements IVisual {
                 .join("path")
                 .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`)
                 .attr("transform", transform)
-                .attr("stroke-width", 5 / transform.k);
+                .attr("stroke-width", 6 / transform.k)
+                .on("pointerenter", (event, d) => pointerEntered(d))
+                .on("pointermove", (event, d) => pointerMoved(d))
+                .on("pointerleave", () => pointerLeft());
 
             this.label
                 .selectAll("text")
@@ -425,9 +488,23 @@ export class Visual implements IVisual {
                 .text(d => dataOperation(d))
                 .attr("x", d => xScale(dataX(d)))
                 .attr("y", d => yScale(dataY(d)))
-                .attr("dy", "1.1em")
+                .attr("dy", "1.4em")
                 .attr("transform", transform)
-                .attr("font-size", 14 / transform.k);
+                .attr("font-size", 12 / transform.k)
+                .on("pointerenter", (event, d) => pointerEntered(d))
+                .on("pointermove", (event, d) => pointerMoved(d))
+                .on("pointerleave", () => pointerLeft());
+
+            this.chartOutlier
+                .selectAll("path")
+                .data(indicesChartOutlier)
+                .join("path")
+                .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`)
+                .attr("transform", transform)
+                .attr("stroke-width", 9 / transform.k)
+                .on("pointerenter", (event, d) => pointerEntered(d))
+                .on("pointermove", (event, d) => pointerMoved(d))
+                .on("pointerleave", () => pointerLeft());
 
             this.chartHighlightRegion
                 .selectAll("path")
@@ -435,7 +512,10 @@ export class Visual implements IVisual {
                 .join("path")
                 .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`)
                 .attr("transform", transform)
-                .attr("stroke-width", 10 / transform.k);
+                .attr("stroke-width", 9 / transform.k)
+                .on("pointerenter", (event, d) => pointerEntered(d))
+                .on("pointermove", (event, d) => pointerMoved(d))
+                .on("pointerleave", () => pointerLeft());
 
             this.chartHighlightOperation
                 .selectAll("path")
@@ -443,7 +523,10 @@ export class Visual implements IVisual {
                 .join("path")
                 .attr("d", d => `M ${xScale(dataX(d))} ${yScale(dataY(d))} h 0`)
                 .attr("transform", transform)
-                .attr("stroke-width", 10 / transform.k);
+                .attr("stroke-width", 9 / transform.k)
+                .on("pointerenter", (event, d) => pointerEntered(d))
+                .on("pointermove", (event, d) => pointerMoved(d))
+                .on("pointerleave", () => pointerLeft());
 
             this.labelHighlightOperation
                 .selectAll("text")
@@ -452,9 +535,12 @@ export class Visual implements IVisual {
                 .text(d => dataOperation(d))
                 .attr("x", d => xScale(dataX(d)))
                 .attr("y", d => yScale(dataY(d)))
-                .attr("dy", "1.1em")
+                .attr("dy", "1.4em")
                 .attr("transform", transform)
-                .attr("font-size", 14 / transform.k);
+                .attr("font-size", 12 / transform.k)
+                .on("pointerenter", (event, d) => pointerEntered(d))
+                .on("pointermove", (event, d) => pointerMoved(d))
+                .on("pointerleave", () => pointerLeft());
 
         });
 
@@ -492,7 +578,7 @@ export class Visual implements IVisual {
         this.xSelect = this.appendDropdown("X: ", "0px", "60%", "xSelect");
         this.ySelect = this.appendDropdown("Y: ", "30px", "60%", "ySelect");
 
-        this.svg = d3.select(options.element)
+        this.svg = d3.select(this.target)
             .append("svg")
             .classed("svg", true);
         this.grid = this.svg
@@ -511,12 +597,18 @@ export class Visual implements IVisual {
         this.yAxis = this.svg
             .append("g")
             .classed("yAxis", true);
-        this.chart = this.svg
+        this.chartArea = this.svg
+            .append("g")
+            .classed("chartArea", true);
+        this.chart = this.chartArea
             .append("g")
             .classed("chart", true);
-        this.label = this.svg
+        this.label = this.chartArea
             .append("g")
             .classed("label", true);
+        this.chartOutlier = this.svg
+            .append("g")
+            .classed("chartOutlier", true);
         this.chartHighlightRegion = this.svg
             .append("g")
             .classed("chartHighlightRegion", true);
@@ -526,6 +618,9 @@ export class Visual implements IVisual {
         this.labelHighlightOperation = this.svg
             .append("g")
             .classed("labelHighlightOperation", true);
+        this.tooltip = d3.select(this.target)
+            .append("div")
+            .classed("tooltip", true);
 
     }
 

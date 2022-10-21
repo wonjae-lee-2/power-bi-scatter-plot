@@ -36,27 +36,34 @@ p {
     text-anchor: start;
 }
 
+.chartArea {
+    opacity: 0.2;
+}
+
 .chart {
     stroke: black;
     stroke-linecap: round;
-    opacity: 0.2;
 }
 
 .label {
     color: black;
     stroke-width: 0px;
     font-weight: 600;
-    opacity: 0.2;
     text-anchor: middle;
 }
 
+.chartOutlier {
+    stroke: gray;
+    stroke-linecap: round;
+}
+
 .chartHighlightRegion {
-    stroke: #4e79a7;
+    stroke: #0072BC;
     stroke-linecap: round;
 }
 
 .chartHighlightOperation {
-    stroke: #e15759;
+    stroke: #EF4A60;
     stroke-linecap: round;
 }
 
@@ -65,4 +72,14 @@ p {
     stroke-width: 0px;
     font-weight: 600;
     text-anchor: middle;
+}
+
+.tooltip {
+    position: absolute;
+    visibility: hidden;
+    background-color: white;
+    border: solid;
+    border-width: 1px;
+    border-radius: 5px;
+    padding: 5px;
 }
