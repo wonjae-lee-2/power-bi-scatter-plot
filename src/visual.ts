@@ -37,7 +37,9 @@ type Selection<T1, T2 = T1> = d3.Selection<any, T1, any, T2>;
 
 import * as aq from "arquero";
 import ColumnTable from "arquero/dist/types/table/column-table";
-import { RenameMap, Select } from "arquero/dist/types/table/transformable";
+import { Select } from "arquero/dist/types/table/transformable";
+
+import { linearRegression, linearRegressionLine } from "simple-statistics";
 
 export class Visual implements IVisual {
 
@@ -50,7 +52,8 @@ export class Visual implements IVisual {
 
     private svg: Selection<any>;
     private grid: Selection<SVGElement>;
-    private averageLines: Selection<SVGElement>;
+    private regressionArea: Selection<SVGElement>;
+    private regressionLine: Selection<SVGElement>;
     private xAxis: Selection<SVGElement>;
     private yAxis: Selection<SVGElement>;
     private chart: Selection<SVGElement>;
@@ -211,7 +214,20 @@ export class Visual implements IVisual {
                 "x": xValues,
                 "y": yValues
             })
-                .impute({ x: () => 0, y: () => 0 });
+                .impute({ x: () => 0, y: () => 0 })
+                .derive({ regression: d => [d.x, d.y] });
+
+            let linReg = linearRegressionLine(linearRegression(dt.array("regression")));
+
+            dt = dt
+                .derive({ yhat: aq.escape(d => linReg(d.x)) })
+                .derive({ resid: d => d.y - d.yhat })
+                .derive({
+                    lower: d => d.yhat - aq.op.stdevp(d.resid),
+                    upper: d => d.yhat + aq.op.stdevp(d.resid)
+                })
+                .select("region", "operation", "x", "y", "yhat", "lower", "upper")
+                .orderby("x");
 
         } else {
 
@@ -231,11 +247,23 @@ export class Visual implements IVisual {
                     x: d => d.xNew - d.xOld,
                     y: d => d.yNew - d.yOld
                 })
-                .select("region", "operation", "x", "y");
+                .derive({ regression: d => [d.x, d.y] });
 
-            return dt;
+            let linReg = linearRegressionLine(linearRegression(dt.array("regression")));
+
+            dt = dt
+                .derive({ yhat: aq.escape(d => linReg(d.x)) })
+                .derive({ resid: d => d.y - d.yhat })
+                .derive({
+                    lower: d => d.yhat - aq.op.stdevp(d.resid),
+                    upper: d => d.yhat + aq.op.stdevp(d.resid)
+                })
+                .select("region", "operation", "x", "y", "yhat", "lower", "upper")
+                .orderby("x");
 
         }
+
+        return dt;
 
     }
 
@@ -264,10 +292,16 @@ export class Visual implements IVisual {
         let dataOperation = data.getter("operation");
         let dataX = data.getter("x");
         let dataY = data.getter("y");
+        let dataYhat = data.getter("yhat");
+        let dataLower = data.getter("lower");
+        let dataUpper = data.getter("upper");
+        let indicesRegression = [
+            d3.filter(indices, d => dataX(d) == aq.agg(data, aq.op.min("x")))[0],
+            d3.filter(indices, d => dataX(d) == aq.agg(data, aq.op.max("x")))[0]
+        ]
         let indicesHighlightRegion = d3.filter(indices, d => dataRegion(d) == this.regionSelect.value);
         let indicesHighlightOperation = d3.filter(indices, d => dataOperation(d) == this.operationSelect.value);
-        let xLabel: string = this.xSelect.value;
-        let yLabel: string = this.ySelect.value;
+
         let [domains] = data
             .rollup({
                 x: d => [aq.op.min(d.x), aq.op.max(d.x)],
@@ -283,15 +317,17 @@ export class Visual implements IVisual {
         if (domains["y"][0] == 0 && domains["y"][1] == 0) {
             yScale = d3.scaleLinear([-1, 1], yRange);
         } else {
-            yScale = d3.scaleLinear(domains["y"], yRange);
+            yScale = d3.scaleLinear(
+                [
+                    d3.min([domains["y"][0], aq.agg(data, aq.op.min("lower"))]),
+                    d3.max([domains["y"][1], aq.agg(data, aq.op.min("upper"))]),
+                    d3.min
+                ],
+                yRange
+            );
         }
-        let [means] = data
-            .rollup({
-                x: d => aq.op.mean(d.x),
-                y: d => aq.op.mean(d.y)
-            });
-        let xMean = [means["x"]];
-        let yMean = [means["y"]];
+        let xLabel: string = this.xSelect.value;
+        let yLabel: string = this.ySelect.value;
 
         let xAxisFunction = (xScale) => d3.axisBottom(xScale).ticks(5, "~s");
         let yAxisFunction = (yScale) => d3.axisLeft(yScale).ticks(5, "~s");
@@ -321,32 +357,12 @@ export class Visual implements IVisual {
             )
             .attr("y1", d => yScale(d))
             .attr("y2", d => yScale(d));
-        let xAverageLine = (g, xScale) => g
-            .selectAll(".xAverageLine")
-            .data(xMean)
-            .join(
-                enter => enter.append("line")
-                    .attr("y1", marginTop / 2)
-                    .attr("y2", height - (marginBottom / 2))
-                    .classed("xAverageLine", true),
-                update => update,
-                exit => exit.remove()
-            )
-            .attr("x1", d => xScale(d))
-            .attr("x2", d => xScale(d));
-        let yAverageLine = (g, yScale) => g
-            .selectAll(".yAverageLine")
-            .data(yMean)
-            .join(
-                enter => enter.append("line")
-                    .attr("x1", marginLeft / 2)
-                    .attr("x2", width - (marginRight / 2))
-                    .classed("yAverageLine", true),
-                update => update,
-                exit => exit.remove()
-            )
-            .attr("y1", d => yScale(d))
-            .attr("y2", d => yScale(d));
+        let area = d3.area<any>()
+            .curve(d3.curveLinear)
+            .x(d => xScale(dataX(d)))
+            .y0(d => yScale(dataLower(d)))
+            .y1(d => yScale(dataUpper(d)))
+
         let zoom = d3.zoom().scaleExtent([0, Infinity]).on("zoom", (event) => {
 
             let transform = event.transform;
@@ -357,9 +373,20 @@ export class Visual implements IVisual {
                 .call(xGrid, xScaleZoomed)
                 .call(yGrid, yScaleZoomed);
 
-            this.averageLines
-                .call(xAverageLine, xScaleZoomed)
-                .call(yAverageLine, yScaleZoomed);
+            this.regressionArea
+                .attr("d", area(indices))
+                .attr("transform", transform);
+
+            this.regressionLine
+                .selectAll("line")
+                .data([indicesRegression])
+                .join("line")
+                .attr("x1", d => xScale(dataX(d[0])))
+                .attr("x2", d => xScale(dataX(d[1])))
+                .attr("y1", d => yScale(dataYhat(d[0])))
+                .attr("y2", d => yScale(dataYhat(d[1])))
+                .attr("transform", transform)
+                .attr("stroke-width", 2 / transform.k);
 
             this.xAxis
                 .attr("transform", `translate(0, ${height - marginBottom})`)
@@ -471,9 +498,13 @@ export class Visual implements IVisual {
         this.grid = this.svg
             .append("g")
             .classed("grid", true);
-        this.averageLines = this.svg
+        this.regressionArea = this.svg
             .append("g")
-            .classed("averageLines", true);
+            .append("path")
+            .classed("regressionArea", true);
+        this.regressionLine = this.svg
+            .append("g")
+            .classed("regressionLine", true);
         this.xAxis = this.svg
             .append("g")
             .classed("xAxis", true);
