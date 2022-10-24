@@ -1,13 +1,13 @@
 {
     "visual": {
-        "name": "scatter",
-        "displayName": "scatter",
+        "name": "power-bi-scatter-plot",
+        "displayName": "Interactive Scatter Plot",
         "guid": "scatter6AE9AAA6125B4C8AB359C01EAE00F9A4",
         "visualClassName": "Visual",
         "version": "1.0.0",
-        "description": "Scatter plot with two drop-down lists",
+        "description": "Scatter plot with drop-down lists for interactive selection and highlighting",
         "supportUrl": "https://community.powerbi.com",
-        "gitHubUrl": ""
+        "gitHubUrl": "https://github.com/wonjae-lee-2/power-bi-scatter-plot"
     },
     "apiVersion": "4.7.0",
     "author": {
