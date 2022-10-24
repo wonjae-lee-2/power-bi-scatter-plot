@@ -340,11 +340,11 @@ export class Visual implements IVisual {
         let xLabel: string = this.xSelect.value;
         let yLabel: string = this.ySelect.value;
 
-        let xAxisFunction = (xScale) => d3.axisBottom(xScale).ticks(5, "~s");
+        let xAxisFunction = (xScale) => d3.axisBottom(xScale).ticks(7, "~s");
         let yAxisFunction = (yScale) => d3.axisLeft(yScale).ticks(5, "~s");
         let xGrid = (g, xScale) => g
             .selectAll(".xGrid")
-            .data(xScale.ticks(8))
+            .data(xScale.ticks(7))
             .join(
                 enter => enter.append("line")
                     .attr("y1", marginTop / 2)
@@ -357,7 +357,7 @@ export class Visual implements IVisual {
             .attr("x2", d => xScale(d));
         let yGrid = (g, yScale) => g
             .selectAll(".yGrid")
-            .data(yScale.ticks(4))
+            .data(yScale.ticks(5))
             .join(
                 enter => enter.append("line")
                     .attr("x1", marginLeft / 2)
