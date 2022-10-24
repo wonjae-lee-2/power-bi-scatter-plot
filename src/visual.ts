@@ -341,7 +341,7 @@ export class Visual implements IVisual {
         let marginBottom = 25;
         let paddingLeft = 30;
         let paddingRight = 30;
-        let paddingTop = 30;
+        let paddingTop = 50;
         let paddingBottom = 15;
         let xRange = [marginLeft + paddingLeft, width - marginRight - paddingRight];
         let yRange = [height - marginBottom - paddingBottom, marginTop + paddingTop];
