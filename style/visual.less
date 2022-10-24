@@ -1,12 +1,53 @@
-p {
-    font-size: 20px;
-    font-weight: bold;
+html {
+    font-family: Arial, Helvetica, sans-serif;
+}
 
-    em {
-        background: yellow;
-        padding: 5px;
+.button {
+    position: absolute;
+    width: 90px;
+    height: 30px;
+    left: 0px;
+    top: 10px;
+    padding: 0px;
+    border: 1px solid #73777F;
+    border-radius: 100px;
+    background-color: rgba(255, 255, 255, 0);
+}
 
-    }
+.button:active {
+    background-color: #D5E4FA;
+}
+
+.label {
+    position: absolute;
+    padding-left: 5px;
+    padding-right: 5px;
+    top: 0px;
+    font-size: 12px;
+    background: linear-gradient(0deg, rgba(0, 98, 162, 0.05), rgba(0, 98, 162, 0.05)), #FDFCFF;
+}
+
+.select {
+    position: absolute;
+    width: 212px;
+    height: 30px;
+    top: 10px;
+    padding-left: 8px;
+    border: 1px solid #73777F;
+    border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0);
+}
+
+.cardMiddle {
+    position: absolute;
+    width: 1018px;
+    height: 568px;
+    left: 0px;
+    top: 60px;
+    padding: 0px;
+    background-color: #FDFCFF;
+    border: 1px solid #73777F;
+    border-radius: 12px;
 }
 
 .grid {
@@ -77,7 +118,7 @@ p {
 .tooltip {
     position: absolute;
     visibility: hidden;
-    background-color: white;
+    background-color: #FDFCFF;
     border: solid;
     border-width: 1px;
     border-radius: 5px;

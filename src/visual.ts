@@ -49,6 +49,7 @@ export class Visual implements IVisual {
     private operationSelect: HTMLSelectElement;
     private xSelect: HTMLSelectElement;
     private ySelect: HTMLSelectElement;
+    private cardMiddle: HTMLDivElement;
 
     private svg: Selection<any>;
     private grid: Selection<SVGElement>;
@@ -65,17 +66,32 @@ export class Visual implements IVisual {
     private labelHighlightOperation: Selection<SVGElement>;
     private tooltip: d3.Selection<HTMLElement, unknown, null, undefined>;
 
-    private appendDropdown(labelText: string, labelPositionTop: string, labelPositionLeft: string, selectId: string) {
+    private appendDropdown(selectPositionLeft: number, selectId: string) {
 
-        let label = document.createElement("label");
         let select = document.createElement("select");
+        let label = document.createElement("label")
 
-        label.innerText = labelText;
-        label.style.position = "absolute";
-        label.style.top = labelPositionTop;
-        label.style.left = labelPositionLeft;
+
+        select.style.left = `${selectPositionLeft}px`;
+        select.className = "select";
         select.id = selectId;
-        label.appendChild(select);
+        label.style.left = `${selectPositionLeft + 8}px`;
+        label.className = "label";
+        switch (selectId) {
+            case "regionSelect":
+                label.textContent = "Region"
+                break;
+            case "operationSelect":
+                label.textContent = "Operation"
+                break;
+            case "xSelect":
+                label.textContent = "X Axis"
+                break;
+            case "ySelect":
+                label.textContent = "Y Axis"
+                break;
+        }
+        this.target.appendChild(select);
         this.target.appendChild(label);
 
         return select;
@@ -97,7 +113,7 @@ export class Visual implements IVisual {
 
                 let option = document.createElement("option");
                 option.value = "";
-                option.text = "--Select a region to highlight--";
+                option.text = "- Region to highlight -";
                 element.add(option);
 
                 let regions = dataViews[0].categorical.categories[1].values;
@@ -124,7 +140,7 @@ export class Visual implements IVisual {
 
                 let option = document.createElement("option");
                 option.value = "";
-                option.text = "--Select an operation to highlight--";
+                option.text = "- Operation to highlight -";
                 element.add(option);
 
                 let operations = dataViews[0].categorical.categories[2].values;
@@ -147,11 +163,43 @@ export class Visual implements IVisual {
 
             }
 
-            default: {
+            case this.xSelect: {
 
                 let option = document.createElement("option");
                 option.value = "";
-                option.text = "--Select a measure to plot--";
+                option.text = "- X axis -";
+                element.add(option);
+
+                let values = dataViews[0].categorical.values;
+                let displayNames = [];
+
+                for (let i = 0; i < values.length; i++) {
+                    displayNames.push(values[i].source.displayName);
+                }
+
+                displayNames.sort(d3.ascending);
+                for (let i = 0; i < displayNames.length; i++) {
+
+                    let option = document.createElement("option");
+                    option.value = displayNames[i];
+                    option.text = displayNames[i];
+                    element.add(option);
+
+                    if (option.value == optionValue) {
+                        element.value = option.value;
+                    }
+
+                }
+
+                break;
+
+            }
+
+            case this.ySelect: {
+
+                let option = document.createElement("option");
+                option.value = "";
+                option.text = "- Y axis -";
                 element.add(option);
 
                 let values = dataViews[0].categorical.values;
@@ -285,17 +333,18 @@ export class Visual implements IVisual {
         this.addDropdownOptions(options, this.xSelect);
         this.addDropdownOptions(options, this.ySelect);
 
-        let width: number = options.viewport.width;
-        let height: number = options.viewport.height;
-        let marginLeft = 40;
+        let width = 1018 //options.viewport.width;
+        let height = 568 //options.viewport.height;
+        let marginLeft = 50;
         let marginRight = 40;
-        let marginTop = 120;
-        let marginBottom = 20;
+        let marginTop = 40;
+        let marginBottom = 25;
         let paddingLeft = 30;
         let paddingRight = 30;
+        let paddingTop = 30;
         let paddingBottom = 15;
         let xRange = [marginLeft + paddingLeft, width - marginRight - paddingRight];
-        let yRange = [height - marginBottom - paddingBottom, marginTop];
+        let yRange = [height - marginBottom - paddingBottom, marginTop + paddingTop];
 
         let data = this.transformData(options);
         let indices = d3.range(0, data.numRows());
@@ -408,15 +457,15 @@ export class Visual implements IVisual {
                 if (xScaleZoomed(dataX(d)) - (tooltipWidth / 2) < 0) {
                     this.tooltip
                         .style("left", `${xScaleZoomed(dataX(d))}px`)
-                        .style("top", `${yScaleZoomed(dataY(d)) - (tooltipHeight * 1.1)}px`);
+                        .style("top", `${yScaleZoomed(dataY(d)) - (tooltipHeight * 1.2)}px`);
                 } else if (xScaleZoomed(dataX(d)) + (tooltipWidth / 2) > width) {
                     this.tooltip
                         .style("left", `${xScaleZoomed(dataX(d)) - tooltipWidth}px`)
-                        .style("top", `${yScaleZoomed(dataY(d)) - (tooltipHeight * 1.1)}px`);
+                        .style("top", `${yScaleZoomed(dataY(d)) - (tooltipHeight * 1.2)}px`);
                 } else {
                     this.tooltip
                         .style("left", `${xScaleZoomed(dataX(d)) - (tooltipWidth / 2)}px`)
-                        .style("top", `${yScaleZoomed(dataY(d)) - (tooltipHeight * 1.1)}px`);
+                        .style("top", `${yScaleZoomed(dataY(d)) - (tooltipHeight * 1.2)}px`);
                 }
 
             }
@@ -567,18 +616,20 @@ export class Visual implements IVisual {
         this.target = options.element;
 
         this.button = document.createElement("button");
+        this.button.className = "button";
         this.button.innerHTML = "Re-center";
-        this.button.style.position = "absolute";
-        this.button.style.top = "15px";
-        this.button.style.left = "10%";
         this.target.appendChild(this.button);
 
-        this.regionSelect = this.appendDropdown("Region: ", "0px", "25%", "regionSelect");
-        this.operationSelect = this.appendDropdown("Operation: ", "30px", "25%", "operationSelect");
-        this.xSelect = this.appendDropdown("X: ", "0px", "60%", "xSelect");
-        this.ySelect = this.appendDropdown("Y: ", "30px", "60%", "ySelect");
+        this.regionSelect = this.appendDropdown(110, "regionSelect");
+        this.operationSelect = this.appendDropdown(342, "operationSelect");
+        this.xSelect = this.appendDropdown(575, "xSelect");
+        this.ySelect = this.appendDropdown(808, "ySelect");
 
-        this.svg = d3.select(this.target)
+        this.cardMiddle = document.createElement("div");
+        this.cardMiddle.className = "cardMiddle";
+        this.target.appendChild(this.cardMiddle);
+
+        this.svg = d3.select(this.cardMiddle)
             .append("svg")
             .classed("svg", true);
         this.grid = this.svg
@@ -618,7 +669,7 @@ export class Visual implements IVisual {
         this.labelHighlightOperation = this.svg
             .append("g")
             .classed("labelHighlightOperation", true);
-        this.tooltip = d3.select(this.target)
+        this.tooltip = d3.select(this.cardMiddle)
             .append("div")
             .classed("tooltip", true);
 
