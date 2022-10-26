@@ -49,7 +49,7 @@ export class Visual implements IVisual {
     private operationSelect: HTMLSelectElement;
     private xSelect: HTMLSelectElement;
     private ySelect: HTMLSelectElement;
-    private cardMiddle: HTMLDivElement;
+    private cardCenter: HTMLDivElement;
 
     private svg: Selection<any>;
     private grid: Selection<SVGElement>;
@@ -333,16 +333,16 @@ export class Visual implements IVisual {
         this.addDropdownOptions(options, this.xSelect);
         this.addDropdownOptions(options, this.ySelect);
 
-        let width = 1018 //options.viewport.width;
-        let height = 568 //options.viewport.height;
+        let width = this.cardCenter.offsetWidth //options.viewport.width;
+        let height = this.cardCenter.offsetHeight //options.viewport.height;
         let marginLeft = 50;
-        let marginRight = 40;
-        let marginTop = 40;
-        let marginBottom = 25;
-        let paddingLeft = 30;
-        let paddingRight = 30;
-        let paddingTop = 50;
-        let paddingBottom = 15;
+        let marginRight = 50;
+        let marginTop = 30;
+        let marginBottom = 30;
+        let paddingLeft = 20;
+        let paddingRight = 20;
+        let paddingTop = 20;
+        let paddingBottom = 20;
         let xRange = [marginLeft + paddingLeft, width - marginRight - paddingRight];
         let yRange = [height - marginBottom - paddingBottom, marginTop + paddingTop];
 
@@ -380,8 +380,7 @@ export class Visual implements IVisual {
             yScale = d3.scaleLinear(
                 [
                     d3.min([domains["y"][0], aq.agg(data, aq.op.min("lower"))]),
-                    d3.max([domains["y"][1], aq.agg(data, aq.op.min("upper"))]),
-                    d3.min
+                    d3.max([domains["y"][1], aq.agg(data, aq.op.max("upper"))])
                 ],
                 yRange
             );
@@ -503,7 +502,7 @@ export class Visual implements IVisual {
                 .call(g => g.selectAll(".domain, .xLabel").remove())
                 .call(g => g.append("text")
                     .attr("x", width - (marginRight / 4))
-                    .attr("y", marginBottom / 4)
+                    .attr("y", -marginBottom / 4)
                     .text(xLabel)
                     .classed("xLabel", true)
                 );
@@ -625,11 +624,11 @@ export class Visual implements IVisual {
         this.xSelect = this.appendDropdown(575, "xSelect");
         this.ySelect = this.appendDropdown(808, "ySelect");
 
-        this.cardMiddle = document.createElement("div");
-        this.cardMiddle.className = "cardMiddle";
-        this.target.appendChild(this.cardMiddle);
+        this.cardCenter = document.createElement("div");
+        this.cardCenter.className = "cardCenter";
+        this.target.appendChild(this.cardCenter);
 
-        this.svg = d3.select(this.cardMiddle)
+        this.svg = d3.select(this.cardCenter)
             .append("svg")
             .classed("svg", true);
         this.grid = this.svg
@@ -669,7 +668,7 @@ export class Visual implements IVisual {
         this.labelHighlightOperation = this.svg
             .append("g")
             .classed("labelHighlightOperation", true);
-        this.tooltip = d3.select(this.cardMiddle)
+        this.tooltip = d3.select(this.cardCenter)
             .append("div")
             .classed("tooltip", true);
 
