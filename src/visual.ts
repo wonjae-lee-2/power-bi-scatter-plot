@@ -98,10 +98,36 @@ export class Visual implements IVisual {
 
     }
 
-    private addDropdownOptions(options: VisualUpdateOptions, element: HTMLSelectElement) {
+    private readData(options: VisualUpdateOptions) {
+
+        let dataViews = options.dataViews;
+        let columnNames: string[] = [];
+        let columns = {};
+
+        for (let i = 0; i < dataViews[0].table.columns.length; i++) {
+
+            columnNames.push(dataViews[0].table.columns[i].displayName);
+            columns[columnNames[i]] = [];
+
+        }
+
+        for (let i = 0; i < dataViews[0].table.rows.length; i++) {
+
+            let row = dataViews[0].table.rows[i];
+
+            for (let i = 0; i < columnNames.length; i++) {
+                columns[columnNames[i]].push(row[i]);
+            }
+
+        }
+
+        return aq.table(columns);
+
+    }
+
+    private addDropdownOptions(dt: ColumnTable, element: HTMLSelectElement) {
 
         let optionValue = element.value;
-        let dataViews = options.dataViews;
 
         while (element.firstChild) {
             element.removeChild(element.firstChild);
@@ -116,14 +142,17 @@ export class Visual implements IVisual {
                 option.text = "- Region to highlight -";
                 element.add(option);
 
-                let regions = dataViews[0].categorical.categories[1].values;
-                let regionsUniqueAsc = [...new Set(regions)].sort(d3.ascending);
+                let regions = dt
+                    .select("Region")
+                    .dedupe()
+                    .orderby("Region")
+                    .array("Region");
 
-                for (let i = 0; i < regionsUniqueAsc.length; i++) {
+                for (let i = 0; i < regions.length; i++) {
 
                     let option = document.createElement("option");
-                    option.value = regionsUniqueAsc[i].valueOf() as string;
-                    option.text = regionsUniqueAsc[i].valueOf() as string;
+                    option.value = regions[i].valueOf() as string;
+                    option.text = regions[i].valueOf() as string;
                     element.add(option);
 
                     if (option.value == optionValue) {
@@ -143,14 +172,17 @@ export class Visual implements IVisual {
                 option.text = "- Operation to highlight -";
                 element.add(option);
 
-                let operations = dataViews[0].categorical.categories[2].values;
-                let operationsUniqueAsc = [...new Set(operations)].sort(d3.ascending);
+                let operations = dt
+                    .select("Operation")
+                    .dedupe()
+                    .orderby("Operation")
+                    .array("Operation");
 
-                for (let i = 0; i < operationsUniqueAsc.length; i++) {
+                for (let i = 0; i < operations.length; i++) {
 
                     let option = document.createElement("option");
-                    option.value = operationsUniqueAsc[i].valueOf() as string;
-                    option.text = operationsUniqueAsc[i].valueOf() as string;
+                    option.value = operations[i].valueOf() as string;
+                    option.text = operations[i].valueOf() as string;
                     element.add(option);
 
                     if (option.value == optionValue) {
@@ -170,12 +202,8 @@ export class Visual implements IVisual {
                 option.text = "- X axis -";
                 element.add(option);
 
-                let values = dataViews[0].categorical.values;
-                let displayNames = [];
-
-                for (let i = 0; i < values.length; i++) {
-                    displayNames.push(values[i].source.displayName);
-                }
+                let displayNames = dt
+                    .columnNames(d => !["Fiscal Year", "Region", "Operation", "Filter Year 1", "Filter Year 2"].includes(d));
 
                 displayNames.sort(d3.ascending);
                 for (let i = 0; i < displayNames.length; i++) {
@@ -202,12 +230,8 @@ export class Visual implements IVisual {
                 option.text = "- Y axis -";
                 element.add(option);
 
-                let values = dataViews[0].categorical.values;
-                let displayNames = [];
-
-                for (let i = 0; i < values.length; i++) {
-                    displayNames.push(values[i].source.displayName);
-                }
+                let displayNames = dt
+                    .columnNames(d => !["Fiscal Year", "Region", "Operation", "Filter Year 1", "Filter Year 2"].includes(d));
 
                 displayNames.sort(d3.ascending);
                 for (let i = 0; i < displayNames.length; i++) {
@@ -231,46 +255,24 @@ export class Visual implements IVisual {
 
     }
 
-    private transformData(options: VisualUpdateOptions): ColumnTable {
+    private transformData(dt: ColumnTable) {
 
-        let dataViews = options.dataViews;
-        let yearValues = dataViews[0].categorical.categories[0].values;
-        let regionValues = dataViews[0].categorical.categories[1].values;
-        let operationValues = dataViews[0].categorical.categories[2].values;
-        let measures = dataViews[0].categorical.values;
+        let d3Data;
+        let linReg;
 
-        let xValues = [];
-        let yValues = [];
+        if (!dt.columnNames().includes("Filter Year 2") || dt.get("Filter Year 1", 0) == dt.get("Filter Year 2", 0)) {
 
-        for (let i = 0; i < measures.length; i++) {
-
-            if (measures[i].source.displayName == this.xSelect.value) {
-                xValues = measures[i].values;
-            }
-
-            if (measures[i].source.displayName == this.ySelect.value) {
-                yValues = measures[i].values;
-            }
-
-        }
-
-        let yearValuesUnique = [...new Set(yearValues)];
-        let dt: ColumnTable;
-
-        if (yearValuesUnique.length == 1) {
-
-            dt = aq.table({
-                "region": regionValues,
-                "operation": operationValues,
-                "x": xValues,
-                "y": yValues
-            })
+            d3Data = dt
+                .filter(d => d["Fiscal Year"] == d["Filter Year 1"])
+                .derive({ x: aq.escape(d => d[this.xSelect.value]), y: aq.escape(d => d[this.ySelect.value]) })
+                .select("Region", "Operation", "x", "y")
+                .rename(aq.names("region", "operation", "x", "y") as Select)
                 .impute({ x: () => 0, y: () => 0 })
                 .derive({ regression: d => [d.x, d.y] });
 
-            let linReg = linearRegressionLine(linearRegression(dt.array("regression")));
+            linReg = linearRegressionLine(linearRegression(d3Data.array("regression")));
 
-            dt = dt
+            d3Data = d3Data
                 .derive({ yhat: aq.escape(d => linReg(d.x)) })
                 .derive({ resid: d => d.y - d.yhat })
                 .derive({
@@ -286,14 +288,11 @@ export class Visual implements IVisual {
 
         } else {
 
-            dt = aq.table({
-                "year": yearValues,
-                "region": regionValues,
-                "operation": operationValues,
-                "x": xValues,
-                "y": yValues
-            })
-                .filter(d => d.year == aq.op.min(d.year) || d.year == aq.op.max(d.year))
+            d3Data = dt
+                .filter(d => d["Fiscal Year"] == d["Filter Year 1"] || d["Fiscal Year"] == d["Filter Year 2"])
+                .derive({ x: aq.escape(d => d[this.xSelect.value]), y: aq.escape(d => d[this.ySelect.value]) })
+                .select("Fiscal Year", "Region", "Operation", "x", "y")
+                .rename(aq.names("year", "region", "operation", "x", "y") as Select)
                 .groupby("region", "operation")
                 .pivot("year", ["x", "y"])
                 .rename(aq.names("region", "operation", "xOld", "xNew", "yOld", "yNew") as Select)
@@ -304,9 +303,9 @@ export class Visual implements IVisual {
                 })
                 .derive({ regression: d => [d.x, d.y] });
 
-            let linReg = linearRegressionLine(linearRegression(dt.array("regression")));
+            linReg = linearRegressionLine(linearRegression(d3Data.array("regression")));
 
-            dt = dt
+            d3Data = d3Data
                 .derive({ yhat: aq.escape(d => linReg(d.x)) })
                 .derive({ resid: d => d.y - d.yhat })
                 .derive({
@@ -322,21 +321,23 @@ export class Visual implements IVisual {
 
         }
 
-        return dt;
+        return d3Data;
 
     }
 
     private drawChart(options: VisualUpdateOptions) {
 
-        this.addDropdownOptions(options, this.regionSelect);
-        this.addDropdownOptions(options, this.operationSelect);
-        this.addDropdownOptions(options, this.xSelect);
-        this.addDropdownOptions(options, this.ySelect);
+        let dt = this.readData(options);
+
+        this.addDropdownOptions(dt, this.regionSelect);
+        this.addDropdownOptions(dt, this.operationSelect);
+        this.addDropdownOptions(dt, this.xSelect);
+        this.addDropdownOptions(dt, this.ySelect);
 
         let width = this.cardCenter.offsetWidth //options.viewport.width;
         let height = this.cardCenter.offsetHeight //options.viewport.height;
         let marginLeft = 50;
-        let marginRight = 50;
+        let marginRight = 40;
         let marginTop = 30;
         let marginBottom = 30;
         let paddingLeft = 20;
@@ -346,7 +347,7 @@ export class Visual implements IVisual {
         let xRange = [marginLeft + paddingLeft, width - marginRight - paddingRight];
         let yRange = [height - marginBottom - paddingBottom, marginTop + paddingTop];
 
-        let data = this.transformData(options);
+        let data = this.transformData(dt);
         let indices = d3.range(0, data.numRows());
         let dataRegion = data.getter("region");
         let dataOperation = data.getter("operation");

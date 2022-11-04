@@ -17,6 +17,16 @@
             "kind": "Grouping"
         },
         {
+            "name": "filter1",
+            "displayName": "Filter Year 1",
+            "kind": "Measure"
+        },
+        {
+            "name": "filter2",
+            "displayName": "Filter Year 2",
+            "kind": "Measure"
+        },
+        {
             "name": "measure",
             "displayName": "Measure",
             "kind": "Measure"
@@ -39,10 +49,20 @@
                     "operation": {
                         "max": 1
                     }
+                },
+                {
+                    "filter1": {
+                        "max": 1
+                    }
+                },
+                {
+                    "filter2": {
+                        "max": 1
+                    }
                 }
             ],
-            "categorical": {
-                "categories": {
+            "table": {
+                "rows": {
                     "select": [
                         {
                             "bind": {
@@ -58,13 +78,23 @@
                             "bind": {
                                 "to": "operation"
                             }
+                        },
+                        {
+                            "bind": {
+                                "to": "filter1"
+                            }
+                        },
+                        {
+                            "bind": {
+                                "to": "filter2"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "measure"
+                            }
                         }
                     ]
-                },
-                "values": {
-                    "for": {
-                        "in": "measure"
-                    }
                 }
             }
         }
