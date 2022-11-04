@@ -260,7 +260,32 @@ export class Visual implements IVisual {
         let d3Data;
         let linReg;
 
-        if (!dt.columnNames().includes("Filter Year 2") || dt.get("Filter Year 1", 0) == dt.get("Filter Year 2", 0)) {
+        if (!dt.columnNames().includes("Filter Year 1")) {
+
+            d3Data = dt
+                .derive({ x: aq.escape(d => d[this.xSelect.value]), y: aq.escape(d => d[this.ySelect.value]) })
+                .select("Region", "Operation", "x", "y")
+                .rename(aq.names("region", "operation", "x", "y") as Select)
+                .impute({ x: () => 0, y: () => 0 })
+                .derive({ regression: d => [d.x, d.y] });
+
+            linReg = linearRegressionLine(linearRegression(d3Data.array("regression")));
+
+            d3Data = d3Data
+                .derive({ yhat: aq.escape(d => linReg(d.x)) })
+                .derive({ resid: d => d.y - d.yhat })
+                .derive({
+                    lower: d => d.yhat - aq.op.stdevp(d.resid),
+                    upper: d => d.yhat + aq.op.stdevp(d.resid)
+                })
+                .derive({
+                    lower2: d => d.yhat - (2 * aq.op.stdevp(d.resid)),
+                    upper2: d => d.yhat + (2 * aq.op.stdevp(d.resid))
+                })
+                .select("region", "operation", "x", "y", "yhat", "lower", "upper", "lower2", "upper2")
+                .orderby("x");
+
+        } else if (dt.get("Filter Year 1", 0) == dt.get("Filter Year 2", 0)) {
 
             d3Data = dt
                 .filter(d => d["Fiscal Year"] == d["Filter Year 1"])
