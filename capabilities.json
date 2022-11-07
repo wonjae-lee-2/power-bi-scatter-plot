@@ -38,24 +38,16 @@
                 {
                     "year": {
                         "max": 1
-                    }
-                },
-                {
+                    },
                     "region": {
                         "max": 1
-                    }
-                },
-                {
+                    },
                     "operation": {
                         "max": 1
-                    }
-                },
-                {
+                    },
                     "filter1": {
                         "max": 1
-                    }
-                },
-                {
+                    },
                     "filter2": {
                         "max": 1
                     }
