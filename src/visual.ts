@@ -199,7 +199,7 @@ export class Visual implements IVisual {
 
                 let option = document.createElement("option");
                 option.value = "";
-                option.text = "- X axis -";
+                option.text = "- Measure for X axis -";
                 element.add(option);
 
                 let displayNames = dt
@@ -210,7 +210,7 @@ export class Visual implements IVisual {
 
                     let option = document.createElement("option");
                     option.value = displayNames[i];
-                    option.text = displayNames[i];
+                    option.text = displayNames[i].substring(7);
                     element.add(option);
 
                     if (option.value == optionValue) {
@@ -227,7 +227,7 @@ export class Visual implements IVisual {
 
                 let option = document.createElement("option");
                 option.value = "";
-                option.text = "- Y axis -";
+                option.text = "- Measure for Y axis -";
                 element.add(option);
 
                 let displayNames = dt
@@ -238,7 +238,7 @@ export class Visual implements IVisual {
 
                     let option = document.createElement("option");
                     option.value = displayNames[i];
-                    option.text = displayNames[i];
+                    option.text = displayNames[i].substring(7);
                     element.add(option);
 
                     if (option.value == optionValue) {
@@ -411,8 +411,18 @@ export class Visual implements IVisual {
                 yRange
             );
         }
-        let xLabel: string = this.xSelect.value;
-        let yLabel: string = this.ySelect.value;
+        let xLabel: string;
+        if (this.xSelect.value == "") {
+            xLabel = "";
+        } else {
+            xLabel = this.xSelect.selectedOptions[0].label;
+        }
+        let yLabel: string;
+        if (this.ySelect.value == "") {
+            yLabel = "";
+        } else {
+            yLabel = this.ySelect.selectedOptions[0].label;
+        }
 
         let xAxisFunction = (xScale) => d3.axisBottom(xScale).ticks(7, "~s");
         let yAxisFunction = (yScale) => d3.axisLeft(yScale).ticks(5, "~s");
