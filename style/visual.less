@@ -18,24 +18,69 @@ html {
     background-color: #D5E4FA;
 }
 
-.label {
+.dropdownContainer {
     position: absolute;
-    padding-left: 5px;
-    padding-right: 5px;
     top: 0px;
-    font-size: 12px;
-    background: linear-gradient(0deg, rgba(0, 98, 162, 0.05), rgba(0, 98, 162, 0.05)), #FDFCFF;
+    width: 204px;
+    height: 40px;
 }
 
-.select {
+.dropdownLabel {
     position: absolute;
-    width: 212px;
-    height: 30px;
+    top: 0px;
+    left: 8px;
+    padding-left: 5px;
+    padding-right: 5px;
+    background: linear-gradient(0deg, rgba(0, 98, 162, 0.05), rgba(0, 98, 162, 0.05)), #FDFCFF;
+    font-size: 12px;
+}
+
+.dropdownSelect {
+    position: absolute;
     top: 10px;
-    padding-left: 8px;
+    left: 0px;
+    width: 204px;
+    height: 30px;
     border: 1px solid #73777F;
     border-radius: 4px;
+    padding-left: 8px;
     background-color: rgba(255, 255, 255, 0);
+}
+
+.settingsSymbol {
+    position: absolute;
+    left: 995px;
+    top: 3px;
+    font-size: x-large;
+    font-weight: 900;
+}
+
+.settingsList {
+    position: absolute;
+    right: 10px;
+    top: 70px;
+    width: 250px;
+    padding: 10px;
+    background: linear-gradient(0deg, rgba(0, 98, 162, 0.05), rgba(0, 98, 162, 0.05)), #FDFCFF;
+    box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.3), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    visibility: hidden;
+}
+
+.settingsListItem {
+    height: 30px;
+    line-height: 30px;
+}
+
+.settingsListTitle {
+    font-weight: 600;
+}
+
+.settingsListClose {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    font-weight: bolder;
 }
 
 .cardCenter {
@@ -58,11 +103,12 @@ html {
 .regressionArea {
     fill: #76b7b2;
     opacity: 0.1;
+    visibility: hidden;
 }
 
 .regressionLine {
     stroke: #76b7b2;
-    stroke-dasharray: 4 2;
+    visibility: hidden;
 }
 
 .xLabel {
@@ -87,7 +133,7 @@ html {
 }
 
 .label {
-    color: black;
+    fill: black;
     stroke-width: 0px;
     font-weight: 600;
     text-anchor: middle;
@@ -98,9 +144,44 @@ html {
     stroke-linecap: round;
 }
 
+.chartRegionalAverages {
+    stroke: #044F85;
+    stroke-linecap: round;
+    visibility: hidden;
+}
+
+.labelRegionalAverages {
+    fill: gray;
+    stroke-width: 0px;
+    font-weight: 600;
+    text-anchor: middle;
+    visibility: hidden;
+}
+
+.chartGlobalAverage {
+    stroke: #B41C37;
+    stroke-linecap: round;
+    visibility: hidden;
+}
+
+.labelGlobalAverage {
+    fill: black;
+    stroke-width: 0px;
+    font-weight: 600;
+    text-anchor: middle;
+    visibility: hidden;
+}
+
 .chartHighlightRegion {
     stroke: #0072BC;
     stroke-linecap: round;
+}
+
+.labelHighlightRegion {
+    fill: gray;
+    stroke-width: 0px;
+    font-weight: 600;
+    text-anchor: middle;
 }
 
 .chartHighlightOperation {
@@ -109,7 +190,7 @@ html {
 }
 
 .labelHighlightOperation {
-    color: black;
+    fill: black;
     stroke-width: 0px;
     font-weight: 600;
     text-anchor: middle;
