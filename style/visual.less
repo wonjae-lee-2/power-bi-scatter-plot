@@ -1,98 +1,247 @@
-html {
-    font-family: Arial, Helvetica, sans-serif;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400..700');
+
+body.visual-sandbox {
+    font-family: 'Inter', sans-serif;
 }
 
-.button {
+.menuContainer {
     position: absolute;
-    width: 90px;
-    height: 30px;
-    left: 0px;
-    top: 10px;
-    padding: 0px;
-    border: 1px solid #73777F;
-    border-radius: 100px;
-    background-color: rgba(255, 255, 255, 0);
+    width: 140px;
+    height: 50px;
+    left: 25px;
+    background: none;
+    border-radius: 10px;
 }
 
-.button:active {
-    background-color: #D5E4FA;
-}
-
-.dropdownContainer {
+.menuIconBlack {
     position: absolute;
-    top: 0px;
-    width: 204px;
-    height: 40px;
+    width: 20px;
+    height: 20px;
+    left: 10px;
+    top: 15px;
+    visibility: visible;
 }
 
-.dropdownLabel {
+.menuIconWhite {
     position: absolute;
-    top: 0px;
-    left: 8px;
-    padding-left: 5px;
-    padding-right: 5px;
-    background: linear-gradient(0deg, rgba(0, 98, 162, 0.05), rgba(0, 98, 162, 0.05)), #FDFCFF;
-    font-size: 12px;
-}
-
-.dropdownSelect {
-    position: absolute;
-    top: 10px;
-    left: 0px;
-    width: 204px;
-    height: 30px;
-    border: 1px solid #73777F;
-    border-radius: 4px;
-    padding-left: 8px;
-    background-color: rgba(255, 255, 255, 0);
-}
-
-.settingsSymbol {
-    position: absolute;
-    left: 995px;
-    top: 3px;
-    font-size: x-large;
-    font-weight: 900;
-}
-
-.settingsList {
-    position: absolute;
-    right: 10px;
-    top: 70px;
-    width: 250px;
-    padding: 10px;
-    background: linear-gradient(0deg, rgba(0, 98, 162, 0.05), rgba(0, 98, 162, 0.05)), #FDFCFF;
-    box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.3), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
-    border-radius: 4px;
+    width: 20px;
+    height: 20px;
+    left: 10px;
+    top: 15px;
     visibility: hidden;
 }
 
-.settingsListItem {
+.menuText {
+    position: absolute;
+    width: 90px;
     height: 30px;
-    line-height: 30px;
-}
-
-.settingsListTitle {
-    font-weight: 600;
-}
-
-.settingsListClose {
-    position: absolute;
-    right: 10px;
+    left: 40px;
     top: 10px;
-    font-weight: bolder;
+    font-weight: 700;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    color: #000000;
 }
 
-.cardCenter {
+.cardLeft {
     position: absolute;
-    width: 1018px;
-    height: 568px;
+    width: 220px;
+    height: 590px;
+    left: 225px;
+    top: 95px;
+    background: #FFFFFF;
+    border-radius: 10px;
+    visibility: visible;
+}
+
+.cardLeftTitle {
+    position: absolute;
+    width: 180px;
+    height: 30px;
+    left: 20px;
+    top: 10px;
+    font-weight: 700;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+}
+
+.filterYear {
+    position: absolute;
+    width: 80px;
+    height: 235px;
+    top: 50px;
+    background: #F6F8FA;
+    border-radius: 10px;
+}
+
+.filterYearTitle {
+    position: absolute;
+    width: 60px;
+    height: 30px;
+    left: 10px;
+    top: 10px;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+}
+
+.filterYearItem {
+    position: absolute;
+    width: 60px;
+    height: 30px;
+    left: 10px;
+}
+
+.filterYearInput {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    left: 2px;
+    top: 8px;
+    margin-left: 0px;
+    margin-right: 0px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+.filterYearLabel {
+    position: absolute;
+    width: 40px;
+    height: 20px;
+    left: 20px;
+    top: 5px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+}
+
+.filterRegion {
+    position: absolute;
+    width: 180px;
+    height: 265px;
+    left: 20px;
+    top: 305px;
+    background: #F6F8FA;
+    border-radius: 10px;
+}
+
+.filterRegionTitle {
+    position: absolute;
+    width: 160px;
+    height: 30px;
+    left: 10px;
+    top: 10px;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+}
+
+.filterRegionItem {
+    position: absolute;
+    width: 160px;
+    height: 30px;
+    left: 10px;
+}
+
+.filterRegionInput {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    left: 2px;
+    top: 8px;
+    margin-left: 0px;
+    margin-right: 0px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+.filterRegionLabel {
+    position: absolute;
+    width: 140px;
+    height: 20px;
+    left: 20px;
+    top: 5px;
+    font-size: 14px;
+    line-height: 20px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.cardRight {
+    position: absolute;
+    width: 780px;
+    height: 590px;
+    left: 465px;
+    top: 95px;
+    background: #FFFFFF;
+    border-radius: 10px;
+}
+
+.chartViewIconArea {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    left: 15px;
+    top: 25px;
+    border-radius: 5px;
+}
+
+.chartViewIconArea:active {
+    background: #F6F8FA;
+}
+
+.chartViewIcon {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    left: 5px;
+    top: 5px;
+}
+
+.chartViewDropdownContainer {
+    position: absolute;
+    width: 165px;
+    height: 40px;
+    top: 15px;
+}
+
+.chartViewDropdownLabel {
+    position: absolute;
+    height: 15px;
+    left: 10px;
+    top: 0px;
+    padding-left: 5px;
+    padding-right: 5px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    background: #FFFFFF;
+}
+
+.chartViewDropdownSelect {
+    position: absolute;
+    width: 165px;
+    height: 30px;
     left: 0px;
-    top: 60px;
-    padding: 0px;
-    background-color: #FDFCFF;
-    border: 1px solid #73777F;
-    border-radius: 12px;
+    top: 10px;
+    border: 1px solid #000000;
+    border-radius: 5px;
+    padding-left: 5px;
+    font-family: 'Inter';
+    font-size: 12px;
+}
+
+.chartViewSvg {
+    position: absolute;
+    width: 740px;
+    height: 495px;
+    left: 20px;
+    top: 75px;
 }
 
 .grid {
@@ -198,10 +347,64 @@ html {
 
 .tooltip {
     position: absolute;
-    visibility: hidden;
-    background-color: #FDFCFF;
+    padding: 5px;
+    font-size: 14px;
+    background: #FFFFFF;
     border: solid;
     border-width: 1px;
     border-radius: 5px;
-    padding: 5px;
+    visibility: hidden;
+}
+
+.settings {
+    position: absolute;
+    width: 300px;
+    height: 590px;
+    top: 95px;
+    background: #FFFFFF;
+    border-radius: 10px;
+}
+
+.settingsTitle {
+    position: absolute;
+    width: 260px;
+    height: 30px;
+    left: 20px;
+    top: 10px;
+    font-weight: 700;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+}
+
+.settingsList1 {
+    position: absolute;
+    width: 260px;
+    height: 155px;
+    left: 20px;
+    top: 50px;
+    background: #F6F8FA;
+    border-radius: 10px;
+}
+
+.settingsListTitle {
+    position: absolute;
+    width: 240px;
+    height: 30px;
+    left: 10px;
+    top: 10px;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+}
+
+.settingsListItem {
+    position: absolute;
+    width: 240px;
+    height: 30px;
+    left: 10px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
 }

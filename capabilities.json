@@ -1,5 +1,13 @@
 {
-    "privileges": [],
+    "privileges": [
+        {
+            "name": "WebAccess",
+            "essential": true,
+            "parameters": [
+                "https://fonts.gstatic.com"
+            ]
+        }
+    ],
     "dataRoles": [
         {
             "name": "year",
@@ -15,16 +23,6 @@
             "name": "operation",
             "displayName": "Operation",
             "kind": "Grouping"
-        },
-        {
-            "name": "filter1",
-            "displayName": "Filter Year 1",
-            "kind": "Measure"
-        },
-        {
-            "name": "filter2",
-            "displayName": "Filter Year 2",
-            "kind": "Measure"
         },
         {
             "name": "measure",
@@ -43,12 +41,6 @@
                         "max": 1
                     },
                     "operation": {
-                        "max": 1
-                    },
-                    "filter1": {
-                        "max": 1
-                    },
-                    "filter2": {
                         "max": 1
                     }
                 }
@@ -69,16 +61,6 @@
                         {
                             "bind": {
                                 "to": "operation"
-                            }
-                        },
-                        {
-                            "bind": {
-                                "to": "filter1"
-                            }
-                        },
-                        {
-                            "bind": {
-                                "to": "filter2"
                             }
                         },
                         {
